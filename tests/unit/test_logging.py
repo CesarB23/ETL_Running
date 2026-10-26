@@ -22,7 +22,7 @@ def test_redact_bearer_and_key_value_patterns():
 
 def test_json_log_is_valid_and_redacted():
     stream = io.StringIO()
-    logger = configure_logging("INFO", secrets=[SECRET], stream=stream)
+    logger = configure_logging("INFO", secrets=[SECRET], stream=stream, fmt="json")
     logger.info("llamando con %s", SECRET, extra={"dataset": "activities_list", "n": 3})
     line = stream.getvalue().strip()
     assert SECRET not in line
@@ -35,7 +35,7 @@ def test_json_log_is_valid_and_redacted():
 
 def test_extras_are_redacted_too():
     stream = io.StringIO()
-    logger = configure_logging("INFO", secrets=[SECRET], stream=stream)
+    logger = configure_logging("INFO", secrets=[SECRET], stream=stream, fmt="json")
     logger.warning("fallo", extra={"detail": f"token={SECRET}"})
     assert SECRET not in stream.getvalue()
 
@@ -45,3 +45,29 @@ def test_configure_logging_is_idempotent():
     logger = configure_logging("DEBUG", stream=io.StringIO())
     assert len(logger.handlers) == 1
     assert logger.level == logging.DEBUG
+
+
+def test_text_format_is_airflow_like_and_redacted():
+    import re
+
+    stream = io.StringIO()
+    logger = configure_logging("INFO", secrets=[SECRET], stream=stream)
+    logger.info("Paso 1/3 · usando %s", SECRET)
+    line = stream.getvalue().strip()
+    assert SECRET not in line
+    assert re.match(
+        r"^\[\d{4}-\d\d-\d\d, \d\d:\d\d:\d\d UTC\] \{test_logging\.py:\d+\} INFO    - Paso 1/3",
+        line,
+    )
+
+
+def test_text_format_shows_extras_and_traceback():
+    stream = io.StringIO()
+    logger = configure_logging("INFO", stream=stream)
+    try:
+        raise ValueError("boom")
+    except ValueError:
+        logger.error("falló", extra={"dataset": "x"}, exc_info=True)
+    out = stream.getvalue()
+    assert "(dataset=x)" in out
+    assert "ValueError: boom" in out

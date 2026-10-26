@@ -19,9 +19,22 @@
 
 ### Ingesta (`src/etl_running/ingest/`)
 - Extractores por fuente. Devuelven payloads; **no escriben a disco**.
-- Incrementales con *lookback* configurable (por defecto 7 días) y modo `backfill`.
-- Reintentos con backoff, respeto de límites de la API, renovación de token.
-- Cada ejecución produce un registro en el manifiesto de bronze.
+- Incrementales con *lookback* configurable (por defecto 3 días) y modo `backfill`.
+- Cada ejecución se anota en `lake/_state/runs.jsonl` (estado `ok`/`error`); el
+  manifiesto de bronze solo registra archivos escritos.
+
+**Política de reintentos** (`ingest/garmin_client.py`, concurrencia 1, ≥0.5 s entre peticiones):
+
+| Respuesta | Acción |
+| --- | --- |
+| 401 | Refresca el token **una vez** por llamada; si persiste, falla |
+| 429, 500, 502, 503, 504, errores de red | Hasta 5 reintentos, espera `1·2^n` s (tope 60 s) + jitter 10 % |
+| Otros (400, 403, 404…) | Sin reintento; falla |
+
+**Errores parciales:** la descarga de la lista ocurre antes de escribir. Si falla, no se
+escribe nada ni avanza el cursor y la ejecución queda como `error`. Si se interrumpe
+durante la escritura, el cursor (`lake/_state/cursor.json`) apunta al último día escrito;
+`backfill` reanuda desde él y la idempotencia por hash evita duplicados.
 
 ### Bronze (`lake/bronze/`)
 - Ruta: `lake/bronze/<fuente>/<dataset>/dt=YYYY-MM-DD/<nombre>.json|fit`
@@ -61,7 +74,7 @@
 - **Frescura:** `max(ingested_at)` por dataset; alerta si supera umbral.
 - **Volumen:** conteo por carga; avisa de caídas bruscas.
 - **Reconciliación:** `count(*)` bronze vs silver por dataset en cada ejecución.
-- **Logs:** estructurados (JSON), sin payloads ni credenciales.
+- **Logs:** texto legible estilo Airflow por defecto (`[fecha UTC] {archivo:línea} NIVEL - mensaje`, con pasos `Paso 1/3…` y banners INICIO/FIN); `--log-format json` para máquinas. Sin payloads ni credenciales. `--log-level DEBUG` añade las peticiones y los días vacíos.
 
 ## Seguridad
 - Secretos solo en `.env` (permisos 600) y/o variables de entorno.
