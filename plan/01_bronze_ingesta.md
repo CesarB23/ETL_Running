@@ -70,11 +70,11 @@ Ejecución real observada 2026-10-26: `backfill` desde 2026-08-17 hasta 2026-10-
 descargó **43 actividades**; ejecución incremental siguiente: **0 archivos nuevos**.
 `bronze report`: 43 actividades, `running=38`, `cycling=2`, `other=2`,
 `walking=1`; particiones `dt=2026-08-17` a `dt=2026-10-26` (incluye días
-vacíos). La primera actividad está fechada el 2026-08-17.
+vacíos). Silver confirmó primera actividad el 2026-08-17 y 38 running.
 
 Nota de alcance: la carga de `plan/weekly_plan` no se implementó aquí; vive en la
 etapa 5 (`ingest/plan_loader.py`), donde ya estaba entregable.
 
 ## Preguntas abiertas
 - Resueltas: ventana desde 2026-08-17 (D10), CLI argparse (D17), solo running (D15).
-- Pendiente: confirmar con el desglose por `typeKey` qué tipos entran en `RUNNING_TYPE_KEYS`.
+- Resuelto tras el backfill y confirmación del usuario (D19): se mantienen `running`, `trail_running`, `treadmill_running`, `track_running`; en datos actuales solo aparece `running`.

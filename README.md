@@ -31,3 +31,13 @@ uv run python -m etl_running config
 ## Estado
 
 Etapa 0 (fundamentos) implementada; la ingesta empieza en `plan/01_bronze_ingesta.md`.
+
+Con bronze cargado, construye la tabla de actividades de running en silver:
+
+```bash
+uv run python -m etl_running silver build --full-refresh
+uv run python -m etl_running silver report
+```
+
+La tabla queda en `lake/silver/activities.parquet` (datos personales: ignorados por git).
+El comando `silver build` sin `--full-refresh` no reescribe si bronze no cambió.
