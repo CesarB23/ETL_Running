@@ -11,7 +11,7 @@ _Última actualización: 2026-10-25 (fase de definición; respuestas del usuario
 | --- | --- | --- | --- |
 | 0 | Fundamentos | HECHA | `plan/00_fundamentos.md` |
 | 1 | Bronze incremental + backfill | EN CURSO | `plan/01_bronze_ingesta.md` |
-| 2 | Silver (actividades running) | EN CURSO | `plan/02_silver.md` |
+| 2 | Silver (actividades running) | HECHA | `plan/02_silver.md` |
 | 3 | FIT → laps y records | PENDIENTE | `plan/03_fit.md` |
 | 4 | Gold con dbt | PENDIENTE | `plan/04_gold_dbt.md` |
 | 5 | Plan vs real | PENDIENTE | `plan/05_plan_vs_real.md` |
@@ -20,7 +20,7 @@ _Última actualización: 2026-10-25 (fase de definición; respuestas del usuario
 | 8 | Extras (ML, nube, observabilidad) | PENDIENTE | `plan/08_extras.md` |
 
 Estados: `PENDIENTE` · `EN CURSO` · `BLOQUEADA` · `HECHA`.
-**Etapa activa:** 2 (Silver, actividades running). La etapa 1 conserva su estado hasta resolver su alcance pendiente (`weekly_plan`).
+**Etapa activa:** ninguna; la siguiente es la 3 (FIT). La etapa 1 conserva el pendiente `weekly_plan`, derivado a la etapa 5.
 
 ## Contexto del usuario y objetivo
 
@@ -63,13 +63,15 @@ Decisiones tomadas con las respuestas del usuario (2026-10-25):
 | D15 | **Alcance: solo actividades de running.** Quedan fuera ciclismo, fuerza, `other` y **todos los datos de salud/bienestar** (sueño, HRV, body battery, estrés, SpO2, pasos, peso, FC reposo, resumen diario, perfil). No se ingestan ni se modelan. Bronze de la lista de actividades conserva todos los tipos (crudo, inmutable), pero **silver y todo lo posterior solo contienen running**; las demás se cuentan en el reporte como `out_of_scope`. | Respuesta del usuario; foco y simplicidad |
 | D16 | **Licencia MIT.** | Respuesta del usuario; repo público como portafolio |
 | D17 | **CLI con `argparse`** (sin dependencias extra, subcomandos con `add_subparsers`). | Respuesta del usuario |
+| D18 | **Conservar lat/lon de inicio en Silver local**, no mostrar en gold/UI por defecto. | Confirmado por el usuario al cerrar la etapa 2; datos personales ignorados por git |
+| D19 | **Incluir `treadmill_running`** en Silver como running, con `has_gps = false`. | Confirmado por el usuario al cerrar la etapa 2 |
 
 Pendientes de decidir (marcar aquí al resolver):
 
 - [ ] Nube en etapa 8 (AWS/GCP/MotherDuck) o quedarse local; la opción D (portafolio) es la prioritaria.
 - [ ] Prioridad analítica si hay que recortar: plan vs real, carga/lesión o predicción de tiempos (propuesta: plan vs real, por ser el diferenciador y por D12).
 - [ ] ¿Verificar con un FIT real que los laps traen `wkt_step_index` y si la actividad enlaza con el `workoutId`? (primera tarea de la etapa 3).
-- [ ] ¿Qué `activityType.typeKey` cuentan como running? Propuesta inicial: `running`, `trail_running`, `treadmill_running`, `track_running` (configurable en `RUNNING_TYPE_KEYS`). La cinta no tiene GPS: se mantiene pero se marca `has_gps = false`. Confirmar con los tipos reales tras el backfill.
+- [x] ¿Qué `activityType.typeKey` cuentan como running? `running`, `trail_running`, `treadmill_running`, `track_running` (configurable en `RUNNING_TYPE_KEYS`); cinta con `has_gps = false` (D19). Backfill real: solo `running` (38); otros tipos previstos quedan configurados para cuando aparezcan.
 
 ## Hechos verificados sobre los datos (a 2026-10-21)
 
@@ -151,3 +153,4 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 | 2026-10-26 | Logs rediseñados: formato texto estilo Airflow por defecto (`--log-format json` opcional), mensajes explícitos por paso en cliente/extractor/pipeline. 66 tests. |
 | 2026-10-26 | Etapa 2 EN CURSO: parser Garmin, contrato Pandera, deduplicación/versiones, Parquet silver y cuarentena, CLI `silver build/report`. Build local: 43 bronze = 38 running + 0 cuarentena + 5 fuera de alcance; segundo build sin cambios. DuckDB necesita `pytz` para consulta semanal sobre `start_utc`. Datos reales solo en `lake/` ignorado por git. |
 | 2026-10-26 | Los Parquet de Silver pasan a escribirse sin compresión por compatibilidad con visores VS Code que no soportan ZSTD; fingerprint de construcción incluye códec para regenerar los archivos antiguos. |
+| 2026-10-26 | Etapa 2 HECHA: el usuario confirma conservar coordenadas en Silver local (D18) e incluir cinta sin GPS (D19). PR de Silver validado con CI y 77 tests. |

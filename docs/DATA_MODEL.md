@@ -57,6 +57,8 @@ están ignorados por git. Para agrupar por **semana local**, preferir `local_dat
 (DuckDB convierte TIMESTAMPTZ a la zona de la sesión).
 Los Parquet de Silver se escriben **sin compresión** para poder abrirlos en visores
 básicos de VS Code; con este volumen personal la diferencia de tamaño es pequeña.
+Decisiones confirmadas: conservar `start_lat`/`start_lon` en Silver, sin publicarlas
+en gold ni en la UI por defecto; `treadmill_running` cuenta como running con `has_gps = false`.
 
 ## Gold (DuckDB / dbt)
 

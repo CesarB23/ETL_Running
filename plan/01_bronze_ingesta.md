@@ -77,4 +77,4 @@ etapa 5 (`ingest/plan_loader.py`), donde ya estaba entregable.
 
 ## Preguntas abiertas
 - Resueltas: ventana desde 2026-08-17 (D10), CLI argparse (D17), solo running (D15).
-- Pendiente: confirmar con el desglose por `typeKey` qué tipos entran en `RUNNING_TYPE_KEYS`.
+- Resuelto tras el backfill y confirmación del usuario (D19): se mantienen `running`, `trail_running`, `treadmill_running`, `track_running`; en datos actuales solo aparece `running`.

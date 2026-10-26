@@ -1,6 +1,6 @@
 # Etapa 2 — Silver (actividades running)
 
-**Estado:** EN CURSO (implementación y prueba local completadas; pendiente revisión de decisiones abiertas) · **Depende de:** etapa 1
+**Estado:** HECHA (2026-10-26; pruebas y decisiones verificadas) · **Depende de:** etapa 1
 
 ## Objetivo
 Convertir bronze en una tabla Parquet de actividades **solo de running**, tipada,
@@ -72,7 +72,7 @@ Ejecución local 2026-10-26 (datos reales solo en `lake/`, ignorado por git):
 - Los tests sintéticos verifican manual, sin FC, cinta, DST, duplicados/versiones, cuarentena, idempotencia y CLI.
 - `pytz` es requerido por DuckDB para truncar fechas de Parquet con zona UTC; fijado en `pyproject.toml`/`uv.lock`.
 - Con volumen personal pequeño, cambios en bronze provocan reconstrucción completa de silver; sin cambios se omite la escritura. El resultado es equivalente a un upsert por `activity_id`, pero **no hay upsert físico incremental**.
+- Parquet sin compresión para compatibilidad con visores de VS Code: 38 filas, 19 KB; 77 tests y lint en verde. Segunda ejecución: sin reescritura.
 
 ## Preguntas abiertas
-- ¿Guardar lat/lon de inicio en silver o descartarlas por privacidad? (propuesta: guardar en silver, excluir de gold/UI por defecto).
-- ¿Cinta (`treadmill_running`) cuenta como running? (propuesta: sí, con `has_gps = false`).
+- Resueltas por el usuario: **conservar** lat/lon de inicio en Silver (datos locales ignorados por git, no mostrar en gold/UI por defecto); **incluir** `treadmill_running` como running con `has_gps = false`.
