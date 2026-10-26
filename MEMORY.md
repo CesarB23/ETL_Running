@@ -13,14 +13,14 @@ _Última actualización: 2026-10-25 (fase de definición; respuestas del usuario
 | 1 | Bronze incremental + backfill | EN CURSO | `plan/01_bronze_ingesta.md` |
 | 2 | Silver (actividades running) | HECHA | `plan/02_silver.md` |
 | 3 | FIT → laps y records | HECHA | `plan/03_fit.md` |
-| 4 | Gold con dbt | PENDIENTE | `plan/04_gold_dbt.md` |
+| 4 | Gold con dbt | HECHA | `plan/04_gold_dbt.md` |
 | 5 | Plan vs real | PENDIENTE | `plan/05_plan_vs_real.md` |
 | 6 | Orquestación | PENDIENTE | `plan/06_orquestacion.md` |
 | 7 | Dashboard y alertas | PENDIENTE | `plan/07_dashboard_alertas.md` |
 | 8 | Extras (ML, nube, observabilidad) | PENDIENTE | `plan/08_extras.md` |
 
 Estados: `PENDIENTE` · `EN CURSO` · `BLOQUEADA` · `HECHA`.
-**Etapa activa:** ninguna; la siguiente es la 4 (Gold). La etapa 1 conserva el pendiente `weekly_plan`, derivado a la etapa 5.
+**Etapa activa:** ninguna; la siguiente es la 5 (Plan vs real). La etapa 1 conserva `weekly_plan`, incluido en el alcance de la etapa 5.
 
 ## Contexto del usuario y objetivo
 
@@ -127,6 +127,10 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 
 ## Hallazgos y deuda técnica
 
+- **dbt-duckdb** (etapa 4, D3) añadido a dependencias del proyecto; el paquete
+  `dbt_utils` v1.3.3 se fija en `dbt/packages.yml` y `dbt/package-lock.yml`.
+  `make dbt-build` instala el paquete y ejecuta `dbt build` con Silver local;
+  tests de integración usan un lake temporal sintético en lugar de datos reales.
 - **Dependencia `pytz` (etapa 2):** DuckDB la requiere para ejecutar operaciones de
   zona horaria sobre `start_utc` leído de Parquet; se añadió a `pyproject.toml`
   y `uv.lock`. Sin ella falla `date_trunc('week', start_utc)`.
@@ -155,3 +159,5 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 | 2026-10-26 | Los Parquet de Silver pasan a escribirse sin compresión por compatibilidad con visores VS Code que no soportan ZSTD; fingerprint de construcción incluye códec para regenerar los archivos antiguos. |
 | 2026-10-26 | Etapa 2 HECHA: el usuario confirma conservar coordenadas en Silver local (D18) e incluir cinta sin GPS (D19). PR de Silver validado con CI y 77 tests. |
 | 2026-10-26 | Etapa 3: 38 FIT ZIP descargados solo a lake; 587 laps, 20 610 records, 0 excepciones de distancia. FIT con workout: 34/35 laps tienen wkt_step_index, API asocia workout sin exponer workoutId. Parser, descarga, gráfica HTML y fixture FIT sintético implementados. |
+| 2026-10-26 | PR #3 FIT integrado; etapa 4 Gold EN CURSO: dbt-duckdb + dbt_utils, 6 marts, 3 vistas staging, 34 pruebas dbt, 44/44 PASS y 84 tests Python incluyendo lake sintético. 38 carreras, 587 laps; ACWR y km cotejados con Silver. Pendiente comparación de 3 ritmos con UI Garmin (±2 s/km). |
+| 2026-10-26 | Etapa 4 HECHA: el usuario confirmó en Garmin Connect coincidencia exacta de ritmo medio de 3 carreras (23/10: 6:51, 24/10: 6:03, 25/10: 8:46 min/km). |

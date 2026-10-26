@@ -52,3 +52,22 @@ uv run python -m etl_running show-run <activity_id> --out lake/_views/run.html
 
 Abre `lake/_views/run.html` en tu navegador. El gráfico y los ZIP originales
 son privados, permanecen dentro de `lake/` y no se versionan.
+
+## Gold (dbt + DuckDB)
+
+Tras construir las tres tablas Silver, genera el almacén analítico:
+
+```bash
+make dbt-build   # instala dbt_utils, construye vistas/tablas y ejecuta tests
+make dbt-docs    # genera y sirve el linaje local (detener con Ctrl+C)
+```
+
+Los marts viven en `lake/warehouse.duckdb`, esquema `gold` (ignorado por git).
+Ejemplo sin instalar el CLI de DuckDB:
+
+```bash
+uv run python -c "import duckdb; print(duckdb.connect('lake/warehouse.duckdb', read_only=True).execute('select week_start, distance_km from gold.fct_weekly_summary order by 1').fetchall())"
+```
+
+El código y las pruebas de CI utilizan **únicamente datos sintéticos**; tu lake
+real nunca se sube al repositorio.

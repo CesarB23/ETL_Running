@@ -1,0 +1,107 @@
+version: 2
+models:
+  - name: stg_activities
+    description: Actividades running desde Parquet silver, sin coordenadas en Gold.
+    columns:
+      - name: activity_id
+        description: Identificador Garmin único.
+        data_tests: [unique, not_null]
+      - name: activity_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [running, trail_running, treadmill_running, track_running]
+  - name: stg_activity_laps
+    description: Laps tipados de actividades running, sin coordenadas.
+    columns:
+      - name: activity_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_activities')
+                field: activity_id
+      - name: lap_index
+        data_tests: [not_null]
+  - name: stg_activity_records
+    description: Records FIT UTC sin GPS en el almacén analítico.
+    columns:
+      - name: activity_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_activities')
+                field: activity_id
+      - name: ts_utc
+        data_tests: [not_null]
+  - name: dim_date
+    description: Días continuos desde START_DATE hasta hoy; semana ISO comienza lunes.
+    columns:
+      - name: activity_date
+        description: Clave de día local.
+        data_tests: [unique, not_null]
+  - name: fct_runs
+    description: Una fila por actividad running con ritmo, eficiencia y drift calculados.
+    columns:
+      - name: activity_id
+        data_tests: [unique, not_null]
+      - name: activity_date
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: activity_date
+      - name: pace_min_km
+        description: 1000 / velocidad media / 60; nulo en actividades manuales o sin velocidad.
+      - name: aerobic_efficiency
+        description: Velocidad media (m/s) / FC media (lpm), solo no manual y FC válida.
+      - name: cardiac_drift_pct
+        description: Variación porcentual de eficiencia velocidad/FC entre mitades válidas; no se interpolan pausas.
+      - name: is_valid_for_pace
+        description: Ritmo 2:30–12:00 min/km, actividad no manual con distancia y duración positivas.
+        data_tests: [not_null]
+  - name: fct_run_laps
+    description: Una fila por lap con intensidad, paso del workout y ritmo.
+    columns:
+      - name: lap_key
+        description: Clave activity_id-lap_index.
+        data_tests: [unique, not_null]
+      - name: activity_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_runs')
+                field: activity_id
+  - name: fct_training_load
+    description: Carga diaria = minutos moderados + 2×vigorosos; ventanas 7/28 días y ACWR.
+    columns:
+      - name: activity_date
+        data_tests: [unique, not_null]
+      - name: training_load
+        description: 0 sin carrera, NULL si Garmin no informa minutos necesarios.
+      - name: acute_7d
+        description: Media móvil 7 días, parametrizada con vars.acute_days.
+      - name: chronic_28d
+        description: Media móvil 28 días, parametrizada con vars.chronic_days.
+      - name: is_reliable
+        description: Verdadero con 28 días completos y carga crónica > 0.
+        data_tests: [not_null]
+      - name: acwr
+        description: acute_7d / chronic_28d; NULL hasta que es fiable.
+  - name: fct_weekly_summary
+    description: Número de carreras no manuales y km por semana ISO local; 0 sin carreras.
+    columns:
+      - name: week_start
+        data_tests: [unique, not_null]
+      - name: distance_km
+        description: Kilómetros semanales de carreras no manuales.
+  - name: mart_data_quality
+    description: Volumen, unicidad, frescura y rechazos de actividades; NULL en rejected_count cuando no existe cuarentena de ese dataset.
+    columns:
+      - name: dataset
+        data_tests: [unique, not_null]
+      - name: row_count
+        data_tests: [not_null]
