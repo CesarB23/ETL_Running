@@ -1,4 +1,4 @@
-"""Logging estructurado (JSON) con redacción de secretos."""
+"""Logging con redacción de secretos: texto legible (estilo Airflow) o JSON."""
 
 from __future__ import annotations
 
@@ -37,6 +37,35 @@ def redact(text: str, secrets: Iterable[str] = ()) -> str:
     return text
 
 
+def _extras(record: logging.LogRecord) -> dict[str, object]:
+    return {
+        key: value
+        for key, value in record.__dict__.items()
+        if key not in _STANDARD_ATTRS and not key.startswith("_")
+    }
+
+
+class TextFormatter(logging.Formatter):
+    """`[2026-10-26, 10:15:03 UTC] {pipeline.py:61} INFO    - mensaje` (como Airflow)."""
+
+    def __init__(self, secrets: Iterable[str] = ()) -> None:
+        super().__init__()
+        self._secrets = tuple(s for s in secrets if s)
+
+    def format(self, record: logging.LogRecord) -> str:
+        when = datetime.fromtimestamp(record.created, UTC).strftime("%Y-%m-%d, %H:%M:%S UTC")
+        line = (
+            f"[{when}] {{{record.filename}:{record.lineno}}} "
+            f"{record.levelname:<7} - {record.getMessage()}"
+        )
+        extras = _extras(record)
+        if extras:
+            line += "  (" + ", ".join(f"{k}={v}" for k, v in extras.items()) + ")"
+        if record.exc_info:
+            line += "\n" + self.formatException(record.exc_info)
+        return redact(line, self._secrets)
+
+
 class JsonFormatter(logging.Formatter):
     def __init__(self, secrets: Iterable[str] = ()) -> None:
         super().__init__()
@@ -49,9 +78,7 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
-        for key, value in record.__dict__.items():
-            if key not in _STANDARD_ATTRS and not key.startswith("_"):
-                payload[key] = value
+        payload.update(_extras(record))
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
         return redact(json.dumps(payload, ensure_ascii=False, default=str), self._secrets)
@@ -61,14 +88,15 @@ def configure_logging(
     level: str = "INFO",
     secrets: Iterable[str] = (),
     stream: TextIO | None = None,
+    fmt: str = "text",
 ) -> logging.Logger:
-    """Configura el logger `etl_running` con salida JSON. Idempotente."""
+    """Configura el logger `etl_running` (`fmt`: `text` o `json`). Idempotente."""
     logger = logging.getLogger("etl_running")
     logger.setLevel(level.upper())
     for handler in list(logger.handlers):
         logger.removeHandler(handler)
     handler = logging.StreamHandler(stream or sys.stderr)
-    handler.setFormatter(JsonFormatter(secrets))
+    handler.setFormatter(JsonFormatter(secrets) if fmt == "json" else TextFormatter(secrets))
     logger.addHandler(handler)
     logger.propagate = False
     return logger

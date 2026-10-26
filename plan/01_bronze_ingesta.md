@@ -1,6 +1,6 @@
 # Etapa 1 — Bronze incremental + backfill
 
-**Estado:** PENDIENTE · **Depende de:** etapa 0
+**Estado:** EN CURSO · **Depende de:** etapa 0
 
 ## Objetivo
 Ingestar la lista de actividades de Garmin (todos los tipos, crudo) a bronze de forma
@@ -28,15 +28,15 @@ reintentos y manejo de token, informe. CLI con `argparse` (D17).
 - Documentación de la política de reintentos y de errores parciales.
 
 ## Tareas
-- [ ] Portar la lógica de `../Garmin/garmin_export.py` (copiar, no importar), quedándonos solo con `search_activities`.
-- [ ] Diseñar `run_id` (timestamp + corto aleatorio) y `sha256` del payload.
-- [ ] Escritura atómica (archivo temporal + rename) y comprobación de duplicado por hash (no reescribe si el hash no cambió).
-- [ ] Paginación de `search_activities` desde la más reciente hacia atrás hasta cruzar `START_DATE`; descartar las anteriores.
-- [ ] Particionar cada actividad por la fecha local de inicio (`dt`).
-- [ ] Manejo de 401 (refrescar token una vez) y 429/5xx (backoff exponencial); ventana sin actividades se registra como payload vacío (es un hecho).
-- [ ] Cursor reanudable: si el backfill se interrumpe, continúa donde quedó.
-- [ ] Comando `bronze report` con conteo por `typeKey` (para decidir `RUNNING_TYPE_KEYS`).
-- [ ] Tests con cliente simulado (sin red): reintentos, idempotencia, cursor, hash repetido.
+- [x] Portar la lógica de `../Garmin/garmin_export.py` (copiar, no importar), quedándonos solo con `search_activities`.
+- [x] Diseñar `run_id` (timestamp + corto aleatorio) y `sha256` del payload.
+- [x] Escritura atómica (archivo temporal + rename) y comprobación de duplicado por hash (no reescribe si el hash no cambió).
+- [x] Paginación de `search_activities` desde la más reciente hacia atrás hasta cruzar `START_DATE`; descartar las anteriores.
+- [x] Particionar cada actividad por la fecha local de inicio (`dt`).
+- [x] Manejo de 401 (refrescar token una vez) y 429/5xx (backoff exponencial); ventana sin actividades se registra como payload vacío (es un hecho).
+- [x] Cursor reanudable: si el backfill se interrumpe, continúa donde quedó.
+- [x] Comando `bronze report` con conteo por `typeKey` (para decidir `RUNNING_TYPE_KEYS`).
+- [x] Tests con cliente simulado (sin red): reintentos, idempotencia, cursor, hash repetido.
 
 ## Criterios de aceptación
 ```bash
@@ -63,7 +63,17 @@ etl_running bronze report                              # tabla por dataset
 - Historial con campos distintos → bronze crudo lo absorbe; silver lo normaliza.
 
 ## Evidencia
-_(rellenar: salida de `bronze report`, rango real de actividades, nº total y desglose por tipo)_
+Implementación y tests con cliente falso: 64 tests y lint en verde (2026-10-26). Incluye `bronze show --last-days N` (solo lectura)
+y un cursor que solo avanza con ventanas contiguas (una carga parcial no oculta días).
+
+Ejecución real observada 2026-10-26: `backfill` desde 2026-08-17 hasta 2026-10-26
+descargó **43 actividades**; ejecución incremental siguiente: **0 archivos nuevos**.
+`bronze report`: 43 actividades, `running=38`, `cycling=2`, `other=2`,
+`walking=1`; particiones `dt=2026-08-17` a `dt=2026-10-26` (incluye días
+vacíos). La primera actividad está fechada el 2026-08-17.
+
+Nota de alcance: la carga de `plan/weekly_plan` no se implementó aquí; vive en la
+etapa 5 (`ingest/plan_loader.py`), donde ya estaba entregable.
 
 ## Preguntas abiertas
 - Resueltas: ventana desde 2026-08-17 (D10), CLI argparse (D17), solo running (D15).

@@ -9,8 +9,8 @@ _Última actualización: 2026-10-25 (fase de definición; respuestas del usuario
 
 | # | Etapa | Estado | Plan |
 | --- | --- | --- | --- |
-| 0 | Fundamentos | EN CURSO (falta ver CI en GitHub) | `plan/00_fundamentos.md` |
-| 1 | Bronze incremental + backfill | PENDIENTE | `plan/01_bronze_ingesta.md` |
+| 0 | Fundamentos | HECHA | `plan/00_fundamentos.md` |
+| 1 | Bronze incremental + backfill | EN CURSO | `plan/01_bronze_ingesta.md` |
 | 2 | Silver (actividades running) | PENDIENTE | `plan/02_silver.md` |
 | 3 | FIT → laps y records | PENDIENTE | `plan/03_fit.md` |
 | 4 | Gold con dbt | PENDIENTE | `plan/04_gold_dbt.md` |
@@ -20,7 +20,7 @@ _Última actualización: 2026-10-25 (fase de definición; respuestas del usuario
 | 8 | Extras (ML, nube, observabilidad) | PENDIENTE | `plan/08_extras.md` |
 
 Estados: `PENDIENTE` · `EN CURSO` · `BLOQUEADA` · `HECHA`.
-**Etapa activa:** 0 (Fundamentos).
+**Etapa activa:** 1 (Bronze incremental + backfill).
 
 ## Contexto del usuario y objetivo
 
@@ -133,8 +133,7 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 - **Licencia:** MIT con titular `cbr23` (editar `LICENSE` si se prefiere el nombre real).
 - **Comprobación de privacidad:** buscar *valores* (`"ownerFullName": "`), no nombres de
   clave: estos aparecen legítimamente en el anonimizador y como `null` en fixtures.
-- **Repo git:** inicializado en `ETL_Running/` con rama `main`; archivos en el índice, sin commits.
-- **Deuda:** CI escrito pero sin verificar en GitHub (no hay remoto).
+- **Repo git:** `main`, commit inicial `c23d5ad`, publicado en GitHub con CI en verde.
 
 ## Registro de cambios
 
@@ -144,3 +143,6 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 | 2026-10-25 | Respuestas del usuario: historial desde 2026-08-17 (D10), uso personal + portafolio (D11), flujo con workout en el reloj (D12), sin FCmax/FC reposo fijas (D13), uv (D14). Planes y docs ajustados. |
 | 2026-10-25 | Alcance reducido a **solo running** (D15): se eliminan datasets de salud, `fct_recovery_daily` y TRIMP. Licencia MIT (D16). CLI con argparse (D17). Planes y docs ajustados. |
 | 2026-10-25 | Etapa 0 implementada: estructura, uv + Python 3.12, config/logging/CLI/anonimizador, fixture sintético, Makefile, CI. 30 tests y lint en verde. Pendiente: ejecutar CI en GitHub. |
+| 2026-10-26 | Etapa 0 HECHA: publicado en GitHub, CI en verde. Etapa 1 EN CURSO. |
+| 2026-10-26 | Etapa 1 implementada con cliente falso: `ingest/{garmin_client,extractors,cursor,pipeline}.py`, `bronze/{writer,report}.py`, CLI `ingest`/`backfill`/`bronze report`/`bronze show`; el cursor solo avanza con ventanas contiguas. 64 tests y lint en verde. Pendiente: backfill real y desglose por `typeKey`. `weekly_plan` queda en etapa 5. |
+| 2026-10-26 | Logs rediseñados: formato texto estilo Airflow por defecto (`--log-format json` opcional), mensajes explícitos por paso en cliente/extractor/pipeline. 66 tests. |

@@ -1,6 +1,6 @@
 # Etapa 0 — Fundamentos
 
-**Estado:** EN CURSO (implementación completa; falta solo verificar CI en GitHub) · **Depende de:** nada
+**Estado:** HECHA (2026-10-26) · **Depende de:** nada
 
 ## Objetivo
 Dejar un repo reproducible, con estructura, herramientas de calidad y CI, antes de
@@ -37,7 +37,7 @@ pytest/ruff, `.gitignore`, `.env.example`, CI, fixture sintético base.
 - [x] `common/config.py` expone también `RUNNING_TYPE_KEYS` (por defecto `running, trail_running, treadmill_running, track_running`).
 - [x] Generar el fixture sintético **desde la forma documentada en MEMORY.md** (los exports reales de `../Garmin/data/` ya no están en disco): sin nombres, sin URLs, GPS ficticio.
 - [x] Script de **anonimización** reutilizable (`scripts/anonymize.py`) con test.
-- [ ] Configurar CI y comprobar que pasa (workflow escrito; requiere push a GitHub para verlo correr).
+- [x] Configurar CI y comprobar que pasa (publicado en GitHub el 2026-10-26; CI en verde).
 
 ## Criterios de aceptación
 ```bash
@@ -77,8 +77,8 @@ Ejecutado el 2026-10-25 en macOS (arm64):
 | `uv sync --locked` | OK (el `uv.lock` es consistente; es lo que usa CI) |
 | Test de PII en fixtures | Pasa (`test_fixtures_contain_no_personal_data`) |
 
-**Pendiente:** ver el workflow `.github/workflows/ci.yml` correr en verde en GitHub
-(no hay remoto configurado todavía).
+CI: el workflow `.github/workflows/ci.yml` corrió en verde en GitHub el 2026-10-26
+tras publicar el repo (commit `c23d5ad`).
 
 Problemas encontrados y corregidos durante la etapa: el anonimizador no limpiaba
 correos en textos libres y la redacción de `Authorization: Bearer …` se duplicaba;
