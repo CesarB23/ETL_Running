@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import copy
+import json
+from dataclasses import asdict
 from datetime import date
 
 import duckdb
 import polars as pl
+import pyarrow.parquet as pq
 import pytest
 
 from etl_running.bronze.writer import BronzeWriter
@@ -14,6 +17,7 @@ from etl_running.common.config import Settings
 from etl_running.silver.build import (
     activities_path,
     build_silver,
+    load_summary,
     quarantine_path,
     summary_path,
 )
@@ -64,6 +68,12 @@ def test_build_reconciles_fixture_and_duckdb_query(settings, activities_fixture)
     ).fetchall()
     assert sum(row[1] for row in weekly) == 3
     assert pl.read_parquet(quarantine_path(settings.silver_dir)).height == 0
+    metadata = pq.read_metadata(activities_path(settings.silver_dir))
+    assert {
+        metadata.row_group(i).column(j).compression
+        for i in range(metadata.num_row_groups)
+        for j in range(metadata.num_columns)
+    } == {"UNCOMPRESSED"}
     report = format_silver_report(settings.silver_dir, settings.running_type_keys)
     assert "Cuadra: sí" in report and "cycling" in report and "other" in report
 
@@ -80,6 +90,21 @@ def test_second_run_no_changes_and_full_refresh_equivalent(settings, activities_
     refreshed = build_silver(settings, full_refresh=True)
     assert refreshed.table_hash == first.table_hash
     assert pl.read_parquet(activities_path(settings.silver_dir)).height == first.silver
+
+
+def test_old_compression_is_migrated_without_changing_logical_data(settings, activities_fixture):
+    write_activities(settings, {a["startTimeLocal"][:10]: [a] for a in activities_fixture})
+    first = build_silver(settings)
+    path = activities_path(settings.silver_dir)
+    pl.read_parquet(path).write_parquet(path, compression="zstd")
+    previous = load_summary(settings.silver_dir)
+    assert previous is not None
+    previous.fingerprint = "fingerprint-anterior-al-cambio-de-codec"
+    summary_path(settings.silver_dir).write_text(json.dumps(asdict(previous)))
+
+    updated = build_silver(settings)
+    assert updated.wrote and updated.table_hash == first.table_hash
+    assert pq.read_metadata(path).row_group(0).column(0).compression == "UNCOMPRESSED"
 
 
 def test_latest_day_version_and_latest_activity_win(settings, activities_fixture):

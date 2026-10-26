@@ -30,6 +30,7 @@ from etl_running.silver.schemas import (
 LOGGER = logging.getLogger("etl_running.silver")
 
 SUMMARY_NAME = "_build.json"
+PARQUET_COMPRESSION = "uncompressed"  # Compatible con visores básicos de Parquet.
 
 
 def activities_path(silver_dir: Path) -> Path:
@@ -76,7 +77,10 @@ def table_hash(df: pl.DataFrame) -> str:
 
 def _fingerprint(settings: Settings) -> str:
     base = manifest_fingerprint(settings.bronze_dir)
-    extra = f"{PARSER_VERSION}|{SCHEMA_VERSION}|{','.join(settings.running_type_keys)}"
+    extra = (
+        f"{PARSER_VERSION}|{SCHEMA_VERSION}|{PARQUET_COMPRESSION}|"
+        f"{','.join(settings.running_type_keys)}"
+    )
     return hashlib.sha256(f"{base}|{extra}".encode()).hexdigest()
 
 
@@ -85,7 +89,7 @@ def _atomic_parquet(df: pl.DataFrame, target: Path) -> None:
     fd, tmp = tempfile.mkstemp(dir=target.parent, suffix=".tmp")
     os.close(fd)
     try:
-        df.write_parquet(tmp, compression="zstd")
+        df.write_parquet(tmp, compression=PARQUET_COMPRESSION)
         os.replace(tmp, target)
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
@@ -267,6 +271,7 @@ def build_silver(settings: Settings, *, full_refresh: bool = False) -> BuildResu
     unchanged = (
         not full_refresh
         and previous is not None
+        and previous.fingerprint == fingerprint
         and previous.table_hash == digest
         and activities_path(silver_dir).is_file()
     )

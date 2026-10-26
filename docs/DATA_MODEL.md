@@ -55,6 +55,8 @@ inválidos van a `lake/silver/_quarantine/activities.parquet` con motivo y ruta 
 no se copian payloads ni datos personales a los logs. Tanto silver como bronze y el warehouse
 están ignorados por git. Para agrupar por **semana local**, preferir `local_date` a `start_utc`
 (DuckDB convierte TIMESTAMPTZ a la zona de la sesión).
+Los Parquet de Silver se escriben **sin compresión** para poder abrirlos en visores
+básicos de VS Code; con este volumen personal la diferencia de tamaño es pequeña.
 
 ## Gold (DuckDB / dbt)
 
