@@ -1,0 +1,18 @@
+version: 2
+sources:
+  - name: silver
+    description: Parquet local solo de actividades running (lake/ ignorado por git).
+    tables:
+      - name: activities
+        config:
+          external_location: "{{ env_var('LAKE_DIR', 'lake') }}/silver/activities.parquet"
+      - name: activity_laps
+        config:
+          external_location: "{{ env_var('LAKE_DIR', 'lake') }}/silver/activity_laps.parquet"
+      - name: activity_records
+        config:
+          external_location: "{{ env_var('LAKE_DIR', 'lake') }}/silver/activity_records.parquet"
+      - name: activities_quarantine
+        description: Filas rechazadas por Silver durante normalización.
+        config:
+          external_location: "{{ env_var('LAKE_DIR', 'lake') }}/silver/_quarantine/activities.parquet"

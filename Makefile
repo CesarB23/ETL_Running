@@ -1,4 +1,4 @@
-.PHONY: setup test lint fmt clean
+.PHONY: setup test lint fmt clean dbt-build dbt-docs
 
 setup:
 	uv sync
@@ -17,3 +17,12 @@ fmt:
 clean:
 	rm -rf .pytest_cache .ruff_cache build dist
 	find . -type d -name __pycache__ -not -path "./.venv/*" -prune -exec rm -rf {} +
+
+# Gold (necesita los tres Parquet silver locales; nunca se versionan).
+dbt-build:
+	uv run dbt deps --project-dir dbt --profiles-dir dbt
+	uv run dbt build --project-dir dbt --profiles-dir dbt
+
+dbt-docs:
+	uv run dbt docs generate --project-dir dbt --profiles-dir dbt
+	uv run dbt docs serve --project-dir dbt --profiles-dir dbt

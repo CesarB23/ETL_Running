@@ -1,6 +1,6 @@
 # Etapa 4 — Gold con dbt
 
-**Estado:** PENDIENTE · **Depende de:** etapas 2 y 3
+**Estado:** HECHA (2026-10-26) · **Depende de:** etapas 2 y 3
 
 ## Objetivo
 Construir el modelo analítico con dbt-duckdb: dimensiones, hechos y métricas de
@@ -28,14 +28,14 @@ consultas de negocio que responden:
 - `analyses/` con las consultas de negocio de arriba.
 
 ## Tareas
-- [ ] Configurar dbt-duckdb leyendo Parquet con `external` o `sources` con `read_parquet`.
-- [ ] Staging por tabla silver.
-- [ ] `dim_date` con `dbt_utils.date_spine`.
-- [ ] `fct_runs`: ritmo, eficiencia aeróbica, drift (si hay records), flags `is_valid_for_pace`.
-- [ ] `fct_training_load`: **carga = `moderate_min + 2·vigorous_min`** por actividad → agregado diario → medias móviles 7/28 → ACWR. Rellenar días sin entrenamiento con 0 de carga (es carga, no dato ausente). Marcar `is_reliable=false` con < 28 días de historial.
-- [ ] Tests genéricos (`unique`, `not_null`, `relationships`, `accepted_values`) y singulares (ACWR ≥ 0, ritmo plausible 2:30–12:00 min/km).
-- [ ] Documentar cada métrica en `schema.yml` según `docs/DATA_MODEL.md`.
-- [ ] Verificar métricas **a mano** con 2–3 actividades reales (comparar contra Garmin Connect).
+- [x] Configurar dbt-duckdb con `sources` external_location de Parquet silver.
+- [x] Staging por tabla silver, sin coordenadas GPS en Gold.
+- [x] `dim_date` con `dbt_utils.date_spine`.
+- [x] `fct_runs`: ritmo, eficiencia aeróbica, drift (si hay records), flags `is_valid_for_pace`.
+- [x] `fct_training_load`: **carga = `moderate_min + 2·vigorous_min`** por actividad → agregado diario → medias móviles 7/28 → ACWR. Días sin entrenamiento = 0; minutos ausentes = NULL. `is_reliable=false` con historial insuficiente o carga crónica nula.
+- [x] Tests genéricos (`unique`, `not_null`, `relationships`, `accepted_values`) y singulares (ACWR ≥ 0, ritmo plausible 2:30–12:00 min/km).
+- [x] Documentar métricas en `schema.yml` según `docs/DATA_MODEL.md`.
+- [x] Verificar métricas **a mano** con 3 actividades reales (usuario confirmó coincidencia exacta con Garmin Connect).
 
 ## Criterios de aceptación
 ```bash
@@ -57,7 +57,22 @@ duckdb lake/warehouse.duckdb -c ".read dbt/analyses/weekly_km.sql"
 - Con la ventana desde 2026-08-17, ACWR es fiable solo desde ~2026-09-14 (`is_reliable`).
 
 ## Evidencia
-_(rellenar: salida de dbt build, captura del linaje, 3 consultas con resultados)_
+Ejecución local 2026-10-26:
+
+- `make dbt-build`: 1 seed, 6 tablas, 3 vistas, 34 pruebas dbt; **44/44 PASS**. `make test`: **84 tests** (incluido lake sintético aislado); `make lint` en verde.
+- `dbt docs generate`: `dbt/target/catalog.json` generado; `make dbt-docs` sirve el linaje local.
+- DuckDB `lake/warehouse.duckdb`: 38 carreras, 587 laps, 71 días, 11 semanas;
+  `fct_weekly_summary` total 244.80 km = suma independiente de `silver.activities`.
+- ACWR último día verificado manualmente desde 28 cargas diarias: 1.3474, idéntico a Gold.
+- Ritmo de 3 actividades recalculado desde la velocidad de Silver: 0 s/km de diferencia.
+  El usuario cotejó las actividades de 2026-10-23, 24 y 25 con la UI de Garmin Connect:
+  **6:51, 6:03 y 8:46 min/km respectivamente**, coincidencia exacta (±0 s/km).
+- Test aislado con Silver sintético de seis semanas: carga NULL vs 0, ACWR tras 28 días,
+  km semanales y segunda construcción idempotente. `dbt seed` contiene expectativas
+  semanales fijas, sin datos personales.
+- `dbt/analyses/` ejecutadas en DuckDB: km semanales (11 filas), ritmo/eficiencia
+  mensual (3 meses; octubre: 11 ritmos válidos, media 6.42 min/km) y carga de
+  las últimas 8 semanas (57 días). Todos los datos reales están solo en `lake/`.
 
 ## Preguntas abiertas
 - Resueltas: sin FCmax/FC reposo (D13) y sin datos de salud (D15); no hay TRIMP.

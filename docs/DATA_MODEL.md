@@ -83,6 +83,22 @@ en gold ni en la UI por defecto; `treadmill_running` cuenta como running con `ha
 | `fct_weekly_summary` | semana | Km, tiempo, desnivel, nº sesiones, % cumplimiento del plan. |
 | `mart_data_quality` | dataset | Frescura, volumen, rechazados. |
 
+En etapa 4 los modelos dbt residen en el esquema `gold` de
+`lake/warehouse.duckdb`. `stg_activities`, `stg_activity_laps` y
+`stg_activity_records` son vistas sobre Parquet Silver (sources dbt); excluyen
+coordenadas GPS y otros datos personales del almacén Gold. Los marts se
+materializan como tablas y pueden reconstruirse con `make dbt-build`.
+
+`fct_runs.pace_min_km = 1000 / avg_speed_mps / 60` (NULL sin velocidad, y
+no se calcula para actividades manuales). `aerobic_efficiency` es
+`avg_speed_mps / avg_hr` solo con FC válida; `cardiac_drift_pct` compara
+la relación velocidad/FC de las mitades de records válidos sin contar pausas.
+La carga diaria es `moderate_intensity_min + 2 * vigorous_intensity_min`:
+**0** en días sin carrera y **NULL** si en una carrera falta algún minuto
+necesario, sin inventar cero. ACWR = media móvil 7 d / media móvil 28 d;
+`is_reliable` solo es cierto con 28 días válidos y carga crónica positiva.
+Ningún valor de ACWR debe interpretarse como diagnóstico de lesión.
+
 ## Definiciones de métricas
 
 - **Ritmo (min/km)** = `1000 / avg_speed_mps / 60`.

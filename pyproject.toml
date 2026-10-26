@@ -15,6 +15,7 @@ dependencies = [
     "pandera[polars]>=0.20",
     "fitdecode>=0.10",
     "pytz>=2024.1",
+    "dbt-duckdb>=1.9,<2",
 ]
 
 [project.scripts]
