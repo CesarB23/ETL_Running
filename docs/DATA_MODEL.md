@@ -30,6 +30,32 @@ Manifiesto: `lake/bronze/_manifest.parquet` con
 Las actividades no running no se guardan en silver; el reporte de silver las cuenta
 como `out_of_scope` para poder reconciliar con bronze.
 
+### Diccionario Garmin → `silver.activities` (etapa 2)
+
+| Campo Garmin | Columna silver | Regla |
+| --- | --- | --- |
+| `activityId` | `activity_id` | Clave entera única; última versión por `ingested_at` |
+| `activityType.typeKey` | `activity_type` | Solo `RUNNING_TYPE_KEYS` |
+| `manualActivity` / `isManualActivity` | `is_manual` | Booleano; ausencia → `false` |
+| `startTimeGMT` | `start_utc` | Timestamp UTC (con zona) |
+| `startTimeLocal` | `start_local`, `local_date` | Hora de pared, sin zona; fecha para particionar |
+| Diferencia local − GMT | `utc_offset_min`, `tz_local` | Offset por actividad (`-06:00`, `+01:00`…), **no** identificador IANA; respeta DST sin inferir la región |
+| `startLatitude`, `startLongitude` | `start_lat`, `start_lon`, `has_gps` | Solo local; nulos en cinta, sin coordenadas o par (0, 0) |
+| `distance`, `duration`, `movingDuration`, `elapsedDuration` | `distance_m`, `duration_s`, `moving_s`, `elapsed_s` | Metros y segundos; duración obligatoria > 0 |
+| `averageSpeed`, `maxSpeed` | `avg_speed_mps`, `max_speed_mps` | m/s |
+| `averageHR`, `maxHR` | `avg_hr`, `max_hr` | 30–230 o NULL; fuera de rango → NULL con aviso |
+| `averageRunningCadenceInStepsPerMinute` | `avg_cadence_spm` | pasos/min |
+| `avgStrideLength` | `stride_m` | Garmin lo entrega en cm; /100 |
+| `elevationGain`, `elevationLoss` | `elev_gain_m`, `elev_loss_m` | m |
+| `calories`, `lapCount` | `calories`, `lap_count` | Sin métricas de salud adicionales |
+| `moderateIntensityMinutes`, `vigorousIntensityMinutes` | `moderate_intensity_min`, `vigorous_intensity_min` | Insumo de carga; ausencia → NULL, no 0 |
+
+Cada fila guarda `source_path`, `bronze_run_id`, `bronze_ingested_at` para linaje. Registros
+inválidos van a `lake/silver/_quarantine/activities.parquet` con motivo y ruta de origen;
+no se copian payloads ni datos personales a los logs. Tanto silver como bronze y el warehouse
+están ignorados por git. Para agrupar por **semana local**, preferir `local_date` a `start_utc`
+(DuckDB convierte TIMESTAMPTZ a la zona de la sesión).
+
 ## Gold (DuckDB / dbt)
 
 | Modelo | Granularidad | Contenido |

@@ -11,7 +11,7 @@ _Última actualización: 2026-10-25 (fase de definición; respuestas del usuario
 | --- | --- | --- | --- |
 | 0 | Fundamentos | HECHA | `plan/00_fundamentos.md` |
 | 1 | Bronze incremental + backfill | EN CURSO | `plan/01_bronze_ingesta.md` |
-| 2 | Silver (actividades running) | PENDIENTE | `plan/02_silver.md` |
+| 2 | Silver (actividades running) | EN CURSO | `plan/02_silver.md` |
 | 3 | FIT → laps y records | PENDIENTE | `plan/03_fit.md` |
 | 4 | Gold con dbt | PENDIENTE | `plan/04_gold_dbt.md` |
 | 5 | Plan vs real | PENDIENTE | `plan/05_plan_vs_real.md` |
@@ -20,7 +20,7 @@ _Última actualización: 2026-10-25 (fase de definición; respuestas del usuario
 | 8 | Extras (ML, nube, observabilidad) | PENDIENTE | `plan/08_extras.md` |
 
 Estados: `PENDIENTE` · `EN CURSO` · `BLOQUEADA` · `HECHA`.
-**Etapa activa:** 1 (Bronze incremental + backfill).
+**Etapa activa:** 2 (Silver, actividades running). La etapa 1 conserva su estado hasta resolver su alcance pendiente (`weekly_plan`).
 
 ## Contexto del usuario y objetivo
 
@@ -125,6 +125,9 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 
 ## Hallazgos y deuda técnica
 
+- **Dependencia `pytz` (etapa 2):** DuckDB la requiere para ejecutar operaciones de
+  zona horaria sobre `start_utc` leído de Parquet; se añadió a `pyproject.toml`
+  y `uv.lock`. Sin ella falla `date_trunc('week', start_utc)`.
 - **Instalación de la librería de Garmin:** `garmin-connect-personal-api-python` está en
   PyPI (v1.0.0), no hace falta instalarla desde otra fuente; entra como dependencia normal.
 - **Python 3.12 vía uv:** uv lo descarga solo; `.python-version` = 3.12. El shell del
@@ -146,3 +149,4 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 | 2026-10-26 | Etapa 0 HECHA: publicado en GitHub, CI en verde. Etapa 1 EN CURSO. |
 | 2026-10-26 | Etapa 1 implementada con cliente falso: `ingest/{garmin_client,extractors,cursor,pipeline}.py`, `bronze/{writer,report}.py`, CLI `ingest`/`backfill`/`bronze report`/`bronze show`; el cursor solo avanza con ventanas contiguas. 64 tests y lint en verde. Pendiente: backfill real y desglose por `typeKey`. `weekly_plan` queda en etapa 5. |
 | 2026-10-26 | Logs rediseñados: formato texto estilo Airflow por defecto (`--log-format json` opcional), mensajes explícitos por paso en cliente/extractor/pipeline. 66 tests. |
+| 2026-10-26 | Etapa 2 EN CURSO: parser Garmin, contrato Pandera, deduplicación/versiones, Parquet silver y cuarentena, CLI `silver build/report`. Build local: 43 bronze = 38 running + 0 cuarentena + 5 fuera de alcance; segundo build sin cambios. DuckDB necesita `pytz` para consulta semanal sobre `start_utc`. Datos reales solo en `lake/` ignorado por git. |

@@ -25,6 +25,8 @@ from etl_running.ingest.pipeline import (
     run_ingest,
     runs_log_path,
 )
+from etl_running.silver.build import build_silver
+from etl_running.silver.report import format_silver_report
 
 
 def _since(raw: str) -> str | date:
@@ -87,6 +89,13 @@ def build_parser() -> argparse.ArgumentParser:
     show.add_argument(
         "--last-days", type=int, default=7, help="Últimos N días incluido hoy (por defecto: 7)."
     )
+    silver = subparsers.add_parser("silver", help="Tablas limpias (solo running).")
+    silver_sub = silver.add_subparsers(dest="silver_command", metavar="SUBCOMANDO", required=True)
+    build = silver_sub.add_parser("build", help="Construye silver.activities desde bronze.")
+    build.add_argument(
+        "--full-refresh", action="store_true", help="Reconstruye todo ignorando el estado previo."
+    )
+    silver_sub.add_parser("report", help="Reconciliación con bronze, alcance y cobertura.")
     return parser
 
 
@@ -142,6 +151,19 @@ def _cmd_bronze_show(settings: Settings, last_days: int) -> int:
     return 0
 
 
+def _cmd_silver(settings: Settings, args: argparse.Namespace) -> int:
+    if args.silver_command == "report":
+        print(format_silver_report(settings.silver_dir, settings.running_type_keys))
+        return 0
+    result = build_silver(settings, full_refresh=args.full_refresh)
+    print(f"silver:        {result.silver} actividades de running")
+    print(f"cuarentena:    {result.quarantine}")
+    print(f"out_of_scope:  {result.out_of_scope_total}")
+    print(f"estado:        {'sin cambios' if result.skipped or not result.wrote else 'escrito'}")
+    print(f"reconcilia:    {'sí' if result.reconciles else 'NO'}")
+    return 0 if result.reconciles else 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
@@ -161,6 +183,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_config(settings)
         if args.command in ("ingest", "backfill"):
             return _cmd_ingest(settings, args)
+        if args.command == "silver":
+            return _cmd_silver(settings, args)
         if args.command == "bronze":
             return (
                 _cmd_bronze_show(settings, args.last_days)

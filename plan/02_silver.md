@@ -1,6 +1,6 @@
 # Etapa 2 — Silver (actividades running)
 
-**Estado:** PENDIENTE · **Depende de:** etapa 1
+**Estado:** EN CURSO (implementación y prueba local completadas; pendiente revisión de decisiones abiertas) · **Depende de:** etapa 1
 
 ## Objetivo
 Convertir bronze en una tabla Parquet de actividades **solo de running**, tipada,
@@ -30,14 +30,14 @@ más `etl_running silver report` con filas procesadas, rechazadas, `out_of_scope
 - Diccionario de campos Garmin → silver en `docs/DATA_MODEL.md`.
 
 ## Tareas
-- [ ] Mapear campos de `activities` (nombres Garmin → silver), conversión UTC/local con `tz_local`.
-- [ ] Filtro de alcance: conservar solo `activityType.typeKey ∈ RUNNING_TYPE_KEYS`; contar el resto como `out_of_scope` (no a cuarentena: no es error).
-- [ ] `is_manual` desde `manualActivity`; `has_gps` (falso en cinta o sin coordenadas).
-- [ ] Extraer `moderate_intensity_min` y `vigorous_intensity_min` (insumo de la carga).
-- [ ] Contrato: tipos, rangos (FC 30–230 o `NULL`, `distance_m >= 0`, `duration_s > 0`), unicidad de `activity_id`.
-- [ ] Estrategia de versiones: la última por `ingested_at` gana.
-- [ ] `--full-refresh` regenera todo desde bronze con resultado idéntico.
-- [ ] Tests con fixtures sintéticos: running normal, manual, sin FC, cinta, ciclismo y `other` (estos dos deben salir como `out_of_scope`).
+- [x] Mapear campos de `activities` (nombres Garmin → silver), conversión UTC/local con `tz_local`.
+- [x] Filtro de alcance: conservar solo `activityType.typeKey ∈ RUNNING_TYPE_KEYS`; contar el resto como `out_of_scope` (no a cuarentena: no es error).
+- [x] `is_manual` desde `manualActivity`; `has_gps` (falso en cinta o sin coordenadas).
+- [x] Extraer `moderate_intensity_min` y `vigorous_intensity_min` (insumo de la carga).
+- [x] Contrato: tipos, rangos (FC 30–230 o `NULL`, `distance_m >= 0`, `duration_s > 0`), unicidad de `activity_id`.
+- [x] Estrategia de versiones: la última por `ingested_at` gana.
+- [x] `--full-refresh` regenera todo desde bronze con resultado idéntico.
+- [x] Tests con fixtures sintéticos: running normal, manual, sin FC, cinta, ciclismo y `other` (estos dos deben salir como `out_of_scope`).
 
 ## Criterios de aceptación
 ```bash
@@ -63,7 +63,15 @@ Fixture sintético con: running manual, sin FC, cinta, duplicado en dos ventanas
 - Un tipo de carrera no previsto (p. ej. `virtual_run`) queda fuera sin avisar → el reporte lista los `typeKey` descartados.
 
 ## Evidencia
-_(rellenar: reporte de silver, consulta de ejemplo con resultados)_
+Ejecución local 2026-10-26 (datos reales solo en `lake/`, ignorado por git):
+
+- Bronze: 43 actividades únicas → silver: **38 running**, cuarentena: **0**, fuera de alcance: **5** (`cycling=2`, `other=2`, `walking=1`). Reconciliación OK.
+- `silver build` por segunda vez: **sin cambios**. `--full-refresh` construye 38 filas.
+- DuckDB: `count(*) = count(distinct activity_id) = 38`, un solo `activity_type`.
+- Consulta semanal (ver resultado visible): 10 semanas entre 2026-08-17 y 2026-10-19; por ejemplo la semana de 2026-10-19: 5 carreras, 45.3 km.
+- Los tests sintéticos verifican manual, sin FC, cinta, DST, duplicados/versiones, cuarentena, idempotencia y CLI.
+- `pytz` es requerido por DuckDB para truncar fechas de Parquet con zona UTC; fijado en `pyproject.toml`/`uv.lock`.
+- Con volumen personal pequeño, cambios en bronze provocan reconstrucción completa de silver; sin cambios se omite la escritura. El resultado es equivalente a un upsert por `activity_id`, pero **no hay upsert físico incremental**.
 
 ## Preguntas abiertas
 - ¿Guardar lat/lon de inicio en silver o descartarlas por privacidad? (propuesta: guardar en silver, excluir de gold/UI por defecto).
