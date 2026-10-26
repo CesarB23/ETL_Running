@@ -41,3 +41,14 @@ uv run python -m etl_running silver report
 
 La tabla queda en `lake/silver/activities.parquet` (datos personales: ignorados por git).
 El comando `silver build` sin `--full-refresh` no reescribe si bronze no cambió.
+
+Para el detalle de laps y registros por segundo (etapa 3):
+
+```bash
+uv run python -m etl_running fit download --pending
+uv run python -m etl_running silver build --only activity_laps activity_records
+uv run python -m etl_running show-run <activity_id> --out lake/_views/run.html
+```
+
+Abre `lake/_views/run.html` en tu navegador. El gráfico y los ZIP originales
+son privados, permanecen dentro de `lake/` y no se versionan.

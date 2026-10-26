@@ -22,6 +22,12 @@ class ActivitySource(Protocol):
     def search_activities(self, *, start: int, limit: int) -> list[dict[str, Any]]: ...
 
 
+class FitSource(ActivitySource, Protocol):
+    def download_activity(self, activity_id: int) -> bytes: ...
+
+    def get_activity_workouts(self, activity_id: int) -> Any: ...
+
+
 class IngestError(RuntimeError):
     """Fallo no recuperable al hablar con Garmin."""
 
@@ -75,7 +81,22 @@ class ResilientClient:
 
     def search_activities(self, *, start: int, limit: int) -> list[dict[str, Any]]:
         LOGGER.debug("GET search_activities start=%d limit=%d", start, limit)
-        return self._call(lambda: self._inner.search_activities(start=start, limit=limit))
+        result = self._call(lambda: self._inner.search_activities(start=start, limit=limit))
+        if result is None:
+            return []
+        if not isinstance(result, list):
+            raise IngestError(f"Respuesta inesperada de Garmin: {type(result).__name__}")
+        return result
+
+    def download_activity(self, activity_id: int) -> bytes:
+        """Obtiene ZIP original, sin loguear el contenido ni credenciales."""
+        result = self._call(lambda: self._inner.download_activity(activity_id))
+        if not isinstance(result, bytes) or not result:
+            raise IngestError("La descarga FIT no devolvió bytes")
+        return result
+
+    def get_activity_workouts(self, activity_id: int) -> Any:
+        return self._call(lambda: self._inner.get_activity_workouts(activity_id))
 
     def _throttle(self) -> None:
         if self._last_request is not None:
@@ -129,10 +150,6 @@ class ResilientClient:
                 )
                 self._sleep(delay)
                 continue
-            if result is None:
-                return []
-            if not isinstance(result, list):
-                raise IngestError(f"Respuesta inesperada de Garmin: {type(result).__name__}")
             return result
 
 

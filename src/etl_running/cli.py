@@ -6,6 +6,7 @@ import argparse
 import sys
 from collections.abc import Sequence
 from datetime import date, timedelta
+from pathlib import Path
 
 from etl_running import __version__
 from etl_running.bronze.report import (
@@ -16,6 +17,7 @@ from etl_running.bronze.report import (
 )
 from etl_running.common.config import ConfigError, DateOutsideWindowError, Settings
 from etl_running.common.logging import configure_logging
+from etl_running.ingest.fit_download import download_pending, pending_fits
 from etl_running.ingest.garmin_client import open_client
 from etl_running.ingest.pipeline import (
     DEFAULT_LOOKBACK,
@@ -26,7 +28,9 @@ from etl_running.ingest.pipeline import (
     runs_log_path,
 )
 from etl_running.silver.build import build_silver
+from etl_running.silver.fit_build import build_fit
 from etl_running.silver.report import format_silver_report
+from etl_running.tools.show_run import render_run
 
 
 def _since(raw: str) -> str | date:
@@ -95,7 +99,20 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument(
         "--full-refresh", action="store_true", help="Reconstruye todo ignorando el estado previo."
     )
+    build.add_argument(
+        "--only",
+        nargs="+",
+        choices=["activity_laps", "activity_records"],
+        help="Construir tablas FIT (ambas siempre juntas).",
+    )
     silver_sub.add_parser("report", help="Reconciliación con bronze, alcance y cobertura.")
+    fit = subparsers.add_parser("fit", help="Descarga FIT originales de carreras.")
+    fit_sub = fit.add_subparsers(dest="fit_command", required=True)
+    download = fit_sub.add_parser("download", help="Descarga FIT pendientes en bronze.")
+    download.add_argument("--pending", action="store_true", help="Solo pendientes (por defecto).")
+    show_run = subparsers.add_parser("show-run", help="Genera HTML con gráfica y laps.")
+    show_run.add_argument("activity_id", type=int)
+    show_run.add_argument("--out", type=Path, required=True)
     return parser
 
 
@@ -155,6 +172,15 @@ def _cmd_silver(settings: Settings, args: argparse.Namespace) -> int:
     if args.silver_command == "report":
         print(format_silver_report(settings.silver_dir, settings.running_type_keys))
         return 0
+    if args.only:
+        if set(args.only) != {"activity_laps", "activity_records"}:
+            raise ValueError("--only requiere activity_laps y activity_records juntos")
+        result = build_fit(settings)
+        print(
+            f"FIT: {result['fits']} | laps: {result['laps']} | records: {result['records']} "
+            f"| excepciones: {len(result['exceptions'])}"
+        )
+        return 0
     result = build_silver(settings, full_refresh=args.full_refresh)
     print(f"silver:        {result.silver} actividades de running")
     print(f"cuarentena:    {result.quarantine}")
@@ -183,6 +209,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_config(settings)
         if args.command in ("ingest", "backfill"):
             return _cmd_ingest(settings, args)
+        if args.command == "fit":
+            pending, excluded = pending_fits(settings)
+            print(f"Pendientes: {len(pending)} | excluidos: {dict(excluded)}")
+            if pending:
+                with open_client(settings) as client:
+                    print(f"Resultado: {dict(download_pending(settings, client))}")
+            return 0
+        if args.command == "show-run":
+            print(render_run(settings.silver_dir, args.activity_id, args.out))
+            return 0
         if args.command == "silver":
             return _cmd_silver(settings, args)
         if args.command == "bronze":
