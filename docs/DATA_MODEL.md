@@ -27,6 +27,17 @@ Manifiesto: `lake/bronze/_manifest.parquet` con
 | `planned_steps` | `(planned_workout_id, step_order)` | Bloques: tipo, distancia o duración objetivo, rango de ritmo (m/s), recuperación. `step_order` es el mismo orden que usa Garmin, para casar con `wkt_step_index`. |
 | `_quarantine/*` | — | Filas rechazadas con `reason` y `source_path`. |
 
+Los FIT (etapa 3) se descargan **solo para actividades running elegibles** desde
+`GarminPersonalApiClient.download_activity(activity_id)`: devuelve un ZIP original
+con un `.fit`, conservado inmutable en bronze. `activity_laps.parquet` tiene `lap_index`,
+`start_utc`, `end_utc`, `distance_m`, `duration_s`, `avg_speed_mps`, `avg_hr`, `max_hr`,
+`avg_cadence_spm`, `lap_trigger`, `intensity`, `wkt_step_index` (NULL sin workout).
+`activity_records.parquet` usa `(activity_id, ts_utc)` único y conserva distancia,
+velocidad m/s, FC, cadencia, altitud, coordenadas en grados (locales) y `timer_running`.
+No se interpolan huecos. `lake/silver/_fit_build.json` registra discrepancias de
+distancia de laps respecto a la actividad (tolerancia por defecto: 1 %). El FIT
+sintético de tests nunca contiene datos personales.
+
 Las actividades no running no se guardan en silver; el reporte de silver las cuenta
 como `out_of_scope` para poder reconciliar con bronze.
 

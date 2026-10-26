@@ -12,7 +12,7 @@ _Última actualización: 2026-10-25 (fase de definición; respuestas del usuario
 | 0 | Fundamentos | HECHA | `plan/00_fundamentos.md` |
 | 1 | Bronze incremental + backfill | EN CURSO | `plan/01_bronze_ingesta.md` |
 | 2 | Silver (actividades running) | HECHA | `plan/02_silver.md` |
-| 3 | FIT → laps y records | PENDIENTE | `plan/03_fit.md` |
+| 3 | FIT → laps y records | HECHA | `plan/03_fit.md` |
 | 4 | Gold con dbt | PENDIENTE | `plan/04_gold_dbt.md` |
 | 5 | Plan vs real | PENDIENTE | `plan/05_plan_vs_real.md` |
 | 6 | Orquestación | PENDIENTE | `plan/06_orquestacion.md` |
@@ -20,7 +20,7 @@ _Última actualización: 2026-10-25 (fase de definición; respuestas del usuario
 | 8 | Extras (ML, nube, observabilidad) | PENDIENTE | `plan/08_extras.md` |
 
 Estados: `PENDIENTE` · `EN CURSO` · `BLOQUEADA` · `HECHA`.
-**Etapa activa:** ninguna; la siguiente es la 3 (FIT). La etapa 1 conserva el pendiente `weekly_plan`, derivado a la etapa 5.
+**Etapa activa:** ninguna; la siguiente es la 4 (Gold). La etapa 1 conserva el pendiente `weekly_plan`, derivado a la etapa 5.
 
 ## Contexto del usuario y objetivo
 
@@ -70,7 +70,7 @@ Pendientes de decidir (marcar aquí al resolver):
 
 - [ ] Nube en etapa 8 (AWS/GCP/MotherDuck) o quedarse local; la opción D (portafolio) es la prioritaria.
 - [ ] Prioridad analítica si hay que recortar: plan vs real, carga/lesión o predicción de tiempos (propuesta: plan vs real, por ser el diferenciador y por D12).
-- [ ] ¿Verificar con un FIT real que los laps traen `wkt_step_index` y si la actividad enlaza con el `workoutId`? (primera tarea de la etapa 3).
+- [x] FIT real de intervalos: 34 de 35 laps con `wkt_step_index`; incluye mensaje `workout`; API `get_activity_workouts` devuelve pasos/nombre **sin campo `workoutId`**. El vínculo de IDs queda por investigar en etapa 5. Una carrera sin workout tiene el campo pero con todos los valores nulos.
 - [x] ¿Qué `activityType.typeKey` cuentan como running? `running`, `trail_running`, `treadmill_running`, `track_running` (configurable en `RUNNING_TYPE_KEYS`); cinta con `has_gps = false` (D19). Backfill real: solo `running` (38); otros tipos previstos quedan configurados para cuando aparezcan.
 
 ## Hechos verificados sobre los datos (a 2026-10-21)
@@ -154,3 +154,4 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 | 2026-10-26 | Etapa 2 EN CURSO: parser Garmin, contrato Pandera, deduplicación/versiones, Parquet silver y cuarentena, CLI `silver build/report`. Build local: 43 bronze = 38 running + 0 cuarentena + 5 fuera de alcance; segundo build sin cambios. DuckDB necesita `pytz` para consulta semanal sobre `start_utc`. Datos reales solo en `lake/` ignorado por git. |
 | 2026-10-26 | Los Parquet de Silver pasan a escribirse sin compresión por compatibilidad con visores VS Code que no soportan ZSTD; fingerprint de construcción incluye códec para regenerar los archivos antiguos. |
 | 2026-10-26 | Etapa 2 HECHA: el usuario confirma conservar coordenadas en Silver local (D18) e incluir cinta sin GPS (D19). PR de Silver validado con CI y 77 tests. |
+| 2026-10-26 | Etapa 3: 38 FIT ZIP descargados solo a lake; 587 laps, 20 610 records, 0 excepciones de distancia. FIT con workout: 34/35 laps tienen wkt_step_index, API asocia workout sin exponer workoutId. Parser, descarga, gráfica HTML y fixture FIT sintético implementados. |

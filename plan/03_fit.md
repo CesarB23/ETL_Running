@@ -1,6 +1,6 @@
 # Etapa 3 — FIT → laps y records
 
-**Estado:** PENDIENTE · **Depende de:** etapas 1 y 2
+**Estado:** HECHA (2026-10-26; datos locales y tests verificados) · **Depende de:** etapas 1 y 2
 
 ## Objetivo
 Obtener el detalle segundo a segundo de cada carrera descargando y parseando los
@@ -25,16 +25,16 @@ parser, tablas silver, vista de verificación.
 - Registro de actividades sin FIT con su motivo (manual, sin descarga, error).
 
 ## Tareas
-- [ ] **Primera tarea, spike de verificación (D12):** descargar un FIT real de un entreno hecho con workout y comprobar (a) que los `lap` traen `wkt_step_index`, (b) si existe un mensaje `workout`/`workout_step` y su nombre, (c) si la actividad enlaza con el `workoutId` de Garmin (en FIT o en el JSON de la actividad). Anotar el resultado en MEMORY.md; de esto depende la etapa 5.
-- [ ] Comprobar cómo se descarga un FIT con la Personal API desde Python (no solo CLI) y documentarlo.
-- [ ] Descarga idempotente: si ya hay hash en bronze, no se repite.
-- [ ] Parser: convertir semicírculos a grados, `enhanced_speed` a m/s, `timestamp` a UTC.
-- [ ] Normalizar `lap` (distancia, tiempo, velocidad media, FC media/max, cadencia, desnivel, `lap_trigger`, `wkt_step_index`).
-- [ ] Validar consistencia: suma de laps ≈ `distance_m` de la actividad (tolerancia configurable).
-- [ ] Controlar actividades de intervalos: laps de recuperación vs trabajo (preservar `intensity` si existe).
-- [ ] Tratar huecos de GPS y pausas (`timer_stop`) sin interpolar a ciegas.
-- [ ] Anonimizar un FIT real para convertirlo en fixture (desplazar coordenadas).
-- [ ] Tests del parser con FIT sintético/anonimizado.
+- [x] **Spike D12:** FIT real de intervalos: 34/35 laps con `wkt_step_index`; mensajes `workout` y API `get_activity_workouts` presentes. No aparece un `workoutId` explícito en la lista devuelta: confirmar enlace exacto en etapa 5 (ver MEMORY.md).
+- [x] Descarga Python con `GarminPersonalApiClient.download_activity(id)` → ZIP de FIT (auth/reintentos compartidos).
+- [x] Descarga idempotente: actividades con FIT en el manifiesto no se solicitan de nuevo.
+- [x] Parser: semicírculos → grados; `enhanced_speed` (ya escalado por fitdecode) → m/s; timestamp → UTC.
+- [x] Laps tipados con métricas, `lap_trigger`, `intensity`, `wkt_step_index`.
+- [x] Reconciliación de distancia de laps con actividad (umbral 1 % por defecto; divergencias registradas).
+- [x] Distinguir trabajo/recuperación con `intensity` y pasos workout.
+- [x] Guardar `timer_running` y huecos sin interpolación; HTML separa trazos en pausas y saltos > 5 s.
+- [x] Fixture FIT **sintético**, en lugar de transformar uno real: coordenadas ficticias, CRC correcto, 5 minutos, series y FIT corrupto (más seguro para repo público).
+- [x] Tests del parser, descarga, idempotencia, tablas silver y HTML con FIT sintético.
 
 ## Criterios de aceptación
 ```bash
@@ -59,7 +59,19 @@ Un FIT anonimizado corto (~5 min) y uno de series; uno corrupto para probar el m
 - Dispositivos con campos distintos (running dynamics) → columnas opcionales.
 
 ## Evidencia
-_(rellenar: nº de FIT descargados, gráfica, resultado de reconciliación)_
+Ejecución real 2026-10-26, exclusivamente en `lake/` (ignorado por git):
+
+- 38 FIT ZIP descargados (38 actividades running); segunda ejecución: **0 pendientes**.
+- 587 laps, 20 610 records, 0 discrepancias de distancia mayores o iguales a 1 %;
+  587 claves de lap y 20 610 timestamps por actividad únicos.
+- Gráfica HTML con ritmo, FC, cadencia y tabla de laps generada en `lake/_views/run.html`.
+- Spike: primera carrera comprobada tenía campo `wkt_step_index` pero **todos sus valores nulos**;
+  una carrera de intervalos tenía **34/35 valores no nulos**, mensajes `workout` y
+  `get_activity_workouts` devolvió una lista asociada. Sus campos no incluyen
+  `workoutId`; no afirmar correspondencia directa de IDs en la etapa 5 sin verificación.
+- 83 tests (incluido FIT sintético, pausas y series) y lint en verde; ninguno de los ZIP reales se versiona ni se usa como fixture.
 
 ## Preguntas abiertas
-- Resuelta (D12): se corre con el workout del reloj, así que se espera un lap por paso. El spike de arriba confirma si `wkt_step_index` viene en el FIT.
+- `wkt_step_index` viene poblado en FIT con workout, no necesariamente en todas las carreras.
+  Pendiente de etapa 5: cómo enlazar ID de workout del plan con `get_activity_workouts`,
+  que devuelve pasos/nombre pero no `workoutId` explícito.
