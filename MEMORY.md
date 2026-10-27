@@ -3,7 +3,7 @@
 Este archivo es la memoria del proyecto. Se actualiza al cerrar cada tarea.
 Un agente nuevo debe leer esto después de `CLAUDE.md` y antes de empezar.
 
-_Última actualización: 2026-10-26 (etapas 0–5 cerradas; siguiente: orquestación)._
+_Última actualización: 2026-10-26 (etapas 0–5 y 7 cerradas; siguiente: 6 orquestación)._
 
 ## Estado de las etapas
 
@@ -16,11 +16,12 @@ _Última actualización: 2026-10-26 (etapas 0–5 cerradas; siguiente: orquestac
 | 4 | Gold con dbt | HECHA | `plan/04_gold_dbt.md` |
 | 5 | Plan vs real | HECHA | `plan/05_plan_vs_real.md` |
 | 6 | Orquestación | PENDIENTE | `plan/06_orquestacion.md` |
-| 7 | Dashboard y alertas | PENDIENTE | `plan/07_dashboard_alertas.md` |
+| 7 | Dashboard y alertas | HECHA | `plan/07_dashboard_alertas.md` |
 | 8 | Extras (ML, nube, observabilidad) | PENDIENTE | `plan/08_extras.md` |
 
 Estados: `PENDIENTE` · `EN CURSO` · `BLOQUEADA` · `HECHA`.
-**Etapa activa:** ninguna; la siguiente es la 6 (Orquestación).
+**Etapa activa:** ninguna; la siguiente es la 6 (Orquestación). Orden ejecutado:
+0–5 → 7 → 6 → 8 (D21).
 
 ## Contexto del usuario y objetivo
 
@@ -65,6 +66,9 @@ Decisiones tomadas con las respuestas del usuario (2026-10-25):
 | D17 | **CLI con `argparse`** (sin dependencias extra, subcomandos con `add_subparsers`). | Respuesta del usuario |
 | D18 | **Conservar lat/lon de inicio en Silver local**, no mostrar en gold/UI por defecto. | Confirmado por el usuario al cerrar la etapa 2; datos personales ignorados por git |
 | D19 | **Incluir `treadmill_running`** en Silver como running, con `has_gps = false`. | Confirmado por el usuario al cerrar la etapa 2 |
+| D20 | **Un entreno desplazado ±1 día se registra con `plan confirm`** como confirmación manual local ligada al `plan_hash`; no se infiere por fecha ni se sube la confianza de los laps. | Decisión al cerrar la etapa 5; evita falsos positivos |
+| D21 | **Etapa 7 antes que etapa 6.** El dashboard solo depende de Gold/Plan vs real; Dagster no aporta contenido y la decisión de runtime sigue abierta. | Valor visible antes, sin tocar la ejecución |
+| D22 | **Alertas iniciales a `lake/alerts.log`**, sin Telegram/e-mail ni notificación macOS. | El usuario eligió log local; notificación externa se pospone |
 
 Pendientes de decidir (marcar aquí al resolver):
 
@@ -174,3 +178,4 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 | 2026-10-26 | PR #3 FIT integrado; etapa 4 Gold EN CURSO: dbt-duckdb + dbt_utils, 6 marts, 3 vistas staging, 34 pruebas dbt, 44/44 PASS y 84 tests Python incluyendo lake sintético. 38 carreras, 587 laps; ACWR y km cotejados con Silver. Pendiente comparación de 3 ritmos con UI Garmin (±2 s/km). |
 | 2026-10-26 | Etapa 4 HECHA: el usuario confirmó en Garmin Connect coincidencia exacta de ritmo medio de 3 carreras (23/10: 6:51, 24/10: 6:03, 25/10: 8:46 min/km). |
 | 2026-10-26 | PR #4 Gold integrado (CI verde). Etapa 5 HECHA: 2 JSON semanales a bronze, 8 sesiones/160 pasos silver, 4 uploads con workoutId locales; 4 carreras confirmadas manualmente (dos con +1 día). Respaldo por tramos del FIT: 44/44 bloques verificables y 18 cumplidos (40,9 %); 83/83 recursos dbt y 90 tests Python. Semana 26: cuatro `upcoming`. Etapa 1 HECHA al completar weekly_plan. |
+| 2026-10-26 | D21: se adelanta la etapa 7 (dashboard) a la 6 (Dagster). D22: alertas a `lake/alerts.log`. Implementados Streamlit (5 páginas), consultas solo Gold, warehouse demo sintético (`lake_demo/`), reglas puras + `alerts run`, `make app/demo/alerts`, docs `DASHBOARD.md`. 110 tests, lint verde y las 5 páginas cargan con `AppTest` en modo demo. |

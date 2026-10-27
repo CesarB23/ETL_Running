@@ -15,6 +15,7 @@ de salud están fuera de alcance. Licencia MIT.
 | `MEMORY.md` | Estado vivo, decisiones y hechos sobre los datos |
 | `docs/ARCHITECTURE.md` | Capas, flujo y decisiones técnicas |
 | `docs/DATA_MODEL.md` | Tablas bronze/silver/gold, claves y reglas |
+| `docs/DASHBOARD.md` | Páginas, KPIs, modo demo y reglas de alerta |
 | `plan/README.md` | Roadmap y cómo se verifica cada etapa |
 | `plan/00..08_*.md` | Plan detallado por etapa con criterios de aceptación |
 
@@ -30,7 +31,9 @@ uv run python -m etl_running config
 
 ## Estado
 
-Etapa 0 (fundamentos) implementada; la ingesta empieza en `plan/01_bronze_ingesta.md`.
+Etapas 0–5 cerradas y etapa 7 (dashboard y alertas) implementada. La etapa 6
+(orquestación con Dagster) queda pendiente de decidir el runtime. El detalle está
+en `MEMORY.md` y `plan/README.md`.
 
 Con bronze cargado, construye la tabla de actividades de running en silver:
 
@@ -90,3 +93,28 @@ del workout con la API; no se versiona. `plan confirm` registra en local que un
 entreno se corrió otro día (±1) sin modificar el plan original. Semanas sin JSON
 son `no_plan` y los ritmos sin lap, tramo o segmento verificable quedan **sin
 dato**, no como fallo.
+
+## Dashboard y alertas
+
+La app lee exclusivamente Gold y no duplica lógica de negocio:
+
+```bash
+make dbt-build
+make app                 # Streamlit en http://localhost:8501
+make alerts              # reglas → lake/alerts.log
+```
+
+Para probar sin datos personales:
+
+```bash
+make demo                # lake_demo/warehouse.duckdb sintético
+DEMO_MODE=1 make app
+```
+
+Páginas: Resumen, Progreso, Carga, Plan vs real y Salud del pipeline. Las reglas
+iniciales cubren ACWR > 1,5, más de 10 días sin correr, cumplimiento < 50 %,
+warehouse con más de 36 h y caducidad de la API key. Detalles en
+[`docs/DASHBOARD.md`](docs/DASHBOARD.md).
+
+Hasta la etapa 6 no hay schedule: la actualización de datos y las alertas se
+lanzan manualmente. No se envían datos a servicios externos.

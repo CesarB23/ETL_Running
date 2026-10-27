@@ -10,8 +10,10 @@ __pycache__/
 
 # Datos reales y derivados (bronze/silver/gold, warehouse)
 lake/
+lake_demo/
 *.duckdb
 *.duckdb.wal
+alerts.log
 
 # dbt
 dbt/target/

@@ -65,6 +65,7 @@ class Settings:
     lake_dir: Path = Path(DEFAULT_LAKE_DIR)
     running_type_keys: tuple[str, ...] = DEFAULT_RUNNING_TYPE_KEYS
     api_key: str | None = field(default=None, repr=False)
+    api_key_expires: date | None = None
 
     @property
     def bronze_dir(self) -> Path:
@@ -125,4 +126,9 @@ class Settings:
                 else defaults.running_type_keys
             ),
             api_key=api_key,
+            api_key_expires=(
+                _parse_date(merged["GARMIN_API_KEY_EXPIRES"], "GARMIN_API_KEY_EXPIRES")
+                if merged.get("GARMIN_API_KEY_EXPIRES")
+                else None
+            ),
         )
