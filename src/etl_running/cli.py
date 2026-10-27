@@ -27,8 +27,12 @@ from etl_running.ingest.pipeline import (
     run_ingest,
     runs_log_path,
 )
+from etl_running.ingest.plan_loader import PlanError, load_week
 from etl_running.silver.build import build_silver
 from etl_running.silver.fit_build import build_fit
+from etl_running.silver.plan_build import build_plan
+from etl_running.silver.plan_confirmations import confirm_match
+from etl_running.silver.plan_links import collect_links
 from etl_running.silver.report import format_silver_report
 from etl_running.tools.show_run import render_run
 
@@ -102,8 +106,8 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument(
         "--only",
         nargs="+",
-        choices=["activity_laps", "activity_records"],
-        help="Construir tablas FIT (ambas siempre juntas).",
+        choices=["activity_laps", "activity_records", "planned_workouts", "planned_steps"],
+        help="Par FIT o par de tablas del plan (siempre juntas).",
     )
     silver_sub.add_parser("report", help="Reconciliación con bronze, alcance y cobertura.")
     fit = subparsers.add_parser("fit", help="Descarga FIT originales de carreras.")
@@ -113,6 +117,17 @@ def build_parser() -> argparse.ArgumentParser:
     show_run = subparsers.add_parser("show-run", help="Genera HTML con gráfica y laps.")
     show_run.add_argument("activity_id", type=int)
     show_run.add_argument("--out", type=Path, required=True)
+    plan = subparsers.add_parser("plan", help="Carga planes semanales JSON a bronze.")
+    plan_sub = plan.add_subparsers(dest="plan_command", required=True)
+    load = plan_sub.add_parser("load", help="Carga un JSON de semana desde Garmin/workouts.")
+    load.add_argument("path", type=Path)
+    link = plan_sub.add_parser("link-workouts", help="Vincula nombre API con uploads locales.")
+    link.add_argument("--refresh", action="store_true", help="Reconsultar la API.")
+    confirm = plan_sub.add_parser("confirm", help="Confirma actividad corrida para una sesión.")
+    confirm.add_argument("--date", type=_day, required=True, help="Fecha planificada.")
+    confirm.add_argument("--activity-id", type=int, required=True)
+    report = subparsers.add_parser("plan-report", help="Cumplimiento semanal plan vs real.")
+    report.add_argument("--week", type=_day, required=True)
     return parser
 
 
@@ -173,15 +188,26 @@ def _cmd_silver(settings: Settings, args: argparse.Namespace) -> int:
         print(format_silver_report(settings.silver_dir, settings.running_type_keys))
         return 0
     if args.only:
-        if set(args.only) != {"activity_laps", "activity_records"}:
-            raise ValueError("--only requiere activity_laps y activity_records juntos")
-        result = build_fit(settings)
-        print(
-            f"FIT: {result['fits']} | laps: {result['laps']} | records: {result['records']} "
-            f"| excepciones: {len(result['exceptions'])}"
-        )
+        if set(args.only) == {"activity_laps", "activity_records"}:
+            result = build_fit(settings)
+            print(
+                f"FIT: {result['fits']} | laps: {result['laps']} | "
+                f"records: {result['records']} | excepciones: {len(result['exceptions'])}"
+            )
+        elif set(args.only) == {"planned_workouts", "planned_steps"}:
+            result = build_plan(settings, Path("../Garmin/data/uploads.json"))
+            print(
+                f"Plan: {result['weeks']} semanas | {result['sessions']} sesiones | "
+                f"{result['steps']} pasos | {result['uploaded_ids']} IDs Garmin"
+            )
+        else:
+            raise ValueError(
+                "--only requiere activity_laps/activity_records o "
+                "planned_workouts/planned_steps juntos"
+            )
         return 0
     result = build_silver(settings, full_refresh=args.full_refresh)
+    build_plan(settings, Path("../Garmin/data/uploads.json"))
     print(f"silver:        {result.silver} actividades de running")
     print(f"cuarentena:    {result.quarantine}")
     print(f"out_of_scope:  {result.out_of_scope_total}")
@@ -207,6 +233,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "config":
             return _cmd_config(settings)
+        if args.command == "plan":
+            if args.plan_command == "load":
+                print("Plan cargado" if load_week(settings, args.path) else "Plan sin cambios")
+            elif args.plan_command == "confirm":
+                updated = confirm_match(settings, args.date, args.activity_id)
+                print("Asociación confirmada" if updated else "Asociación ya confirmada")
+            else:
+                with open_client(settings) as client:
+                    count = collect_links(settings, client, refresh=args.refresh)
+                    print(f"Workouts enlazados: {count}")
+            return 0
+        if args.command == "plan-report":
+            from etl_running.gold.plan_report import report_week
+
+            print(report_week(settings, args.week))
+            return 0
         if args.command in ("ingest", "backfill"):
             return _cmd_ingest(settings, args)
         if args.command == "fit":
@@ -227,7 +269,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if args.bronze_command == "show"
                 else _cmd_bronze_report(settings)
             )
-    except (ConfigError, DateOutsideWindowError, WindowError) as exc:
+    except (ConfigError, DateOutsideWindowError, WindowError, PlanError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
     except Exception as exc:

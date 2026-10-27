@@ -12,6 +12,12 @@ import duckdb
 import polars as pl
 
 from etl_running.silver.fit_build import LAPS_SCHEMA, RECORDS_SCHEMA
+from etl_running.silver.plan_build import (
+    CONFIRMATION_SCHEMA,
+    LINK_SCHEMA,
+    STEP_SCHEMA,
+    WORKOUT_SCHEMA,
+)
 from etl_running.silver.schemas import ACTIVITIES_POLARS_SCHEMA, QUARANTINE_POLARS_SCHEMA
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -51,6 +57,10 @@ def test_dbt_gold_with_six_weeks_synthetic(tmp_path):
     pl.DataFrame(rows, schema=ACTIVITIES_POLARS_SCHEMA).write_parquet(silver / "activities.parquet")
     pl.DataFrame(schema=LAPS_SCHEMA).write_parquet(silver / "activity_laps.parquet")
     pl.DataFrame(schema=RECORDS_SCHEMA).write_parquet(silver / "activity_records.parquet")
+    pl.DataFrame(schema=WORKOUT_SCHEMA).write_parquet(silver / "planned_workouts.parquet")
+    pl.DataFrame(schema=STEP_SCHEMA).write_parquet(silver / "planned_steps.parquet")
+    pl.DataFrame(schema=LINK_SCHEMA).write_parquet(silver / "activity_workout_links.parquet")
+    pl.DataFrame(schema=CONFIRMATION_SCHEMA).write_parquet(silver / "plan_confirmations.parquet")
     (silver / "_quarantine").mkdir()
     pl.DataFrame(schema=QUARANTINE_POLARS_SCHEMA).write_parquet(
         silver / "_quarantine" / "activities.parquet"

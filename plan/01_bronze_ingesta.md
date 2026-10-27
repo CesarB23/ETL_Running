@@ -1,6 +1,6 @@
 # Etapa 1 — Bronze incremental + backfill
 
-**Estado:** EN CURSO · **Depende de:** etapa 0
+**Estado:** HECHA (2026-10-26; carga semanal del plan incorporada en etapa 5) · **Depende de:** etapa 0
 
 ## Objetivo
 Ingestar la lista de actividades de Garmin (todos los tipos, crudo) a bronze de forma
@@ -73,7 +73,8 @@ descargó **43 actividades**; ejecución incremental siguiente: **0 archivos nue
 vacíos). Silver confirmó primera actividad el 2026-08-17 y 38 running.
 
 Nota de alcance: la carga de `plan/weekly_plan` no se implementó aquí; vive en la
-etapa 5 (`ingest/plan_loader.py`), donde ya estaba entregable.
+etapa 5 (`ingest/plan_loader.py`). Ya se cargaron 2 semanas JSON; las anteriores
+sin JSON se registran como `no_plan`, nunca se reconstruyen ficticiamente.
 
 ## Preguntas abiertas
 - Resueltas: ventana desde 2026-08-17 (D10), CLI argparse (D17), solo running (D15).
