@@ -133,7 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
     alerts_sub = alerts.add_subparsers(dest="alerts_command", metavar="SUBCOMANDO", required=True)
     alerts_run = alerts_sub.add_parser("run", help="Evalúa y escribe lake/alerts.log.")
     alerts_run.add_argument(
-        "--log",
+        "--log-file",
         type=Path,
         default=None,
         help="Ruta alternativa del log (por defecto: lake/alerts.log).",
@@ -250,7 +250,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "alerts":
             from etl_running.alerts.runner import run_alerts
 
-            result = run_alerts(settings, log_path=args.log)
+            result = run_alerts(settings, log_path=args.log_file)
             for alert in result.alerts:
                 print(f"{alert.severity.upper():8} {alert.code}: {alert.message}")
             if not result.alerts:

@@ -72,14 +72,18 @@ def test_evaluate_returns_stable_order():
     ]
 
 
-def test_run_alerts_appends_to_log(tmp_path: Path):
+def test_run_alerts_appends_to_log(tmp_path: Path, monkeypatch):
     warehouse = build_demo_warehouse(tmp_path / "warehouse.duckdb", weeks=8)
     settings = Settings(lake_dir=warehouse.parent)
     now = datetime(2026, 10, 26, 12, tzinfo=UTC)
+    monkeypatch.setattr(
+        "etl_running.alerts.runner._read_context",
+        lambda settings, now: AlertContext(acwr=1.8, acwr_reliable=True),
+    )
     result = run_alerts(settings, log_path=tmp_path / "alerts.log", now=now)
     lines = result.log_path.read_text(encoding="utf-8").splitlines()
     assert result.alerts
-    assert any("plan_compliance_low" in line for line in lines)
+    assert any("acwr_high" in line for line in lines)
     assert warehouse.is_file()
 
 
@@ -126,9 +130,10 @@ def test_cli_alerts_writes_log(monkeypatch, tmp_path: Path, capsys):
     build_demo_warehouse(tmp_path / "warehouse.duckdb")
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("LAKE_DIR", str(tmp_path))
+    monkeypatch.setenv("GARMIN_API_KEY_EXPIRES", (date.today() + timedelta(days=1)).isoformat())
     log = tmp_path / "alerts.log"
-    assert main(["alerts", "run", "--log", str(log)]) == 0
+    assert main(["alerts", "run", "--log-file", str(log)]) == 0
     out = capsys.readouterr().out
     assert "alertas:" in out
     assert log.is_file()
-    assert "plan_compliance_low" in log.read_text(encoding="utf-8")
+    assert "api_key_expiring" in log.read_text(encoding="utf-8")
