@@ -15,6 +15,10 @@ aceptación verificables por comando**. No se empieza la siguiente sin cerrar la
 | 7 | [Dashboard y alertas](07_dashboard_alertas.md) | App Streamlit con KPIs y alertas | 4, 5 |
 | 8 | [Extras](08_extras.md) | Predicción, nube u observabilidad (a elegir) | 7 |
 
+> **Orden de ejecución:** 0–5 → 7 (dashboard, D21) → 6 (Dagster) → 8. La etapa 7
+> no depende de la orquestación; se adelantó para obtener valor visible antes de
+> decidir dónde corre Dagster.
+
 ## Plantilla de cada plan
 
 Cada archivo contiene: Objetivo · Resultado visible · Alcance (dentro/fuera) ·

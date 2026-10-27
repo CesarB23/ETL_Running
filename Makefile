@@ -1,4 +1,4 @@
-.PHONY: setup test lint fmt clean dbt-build dbt-docs
+.PHONY: setup test lint fmt clean dbt-build dbt-docs app demo alerts
 
 setup:
 	uv sync
@@ -26,3 +26,15 @@ dbt-build:
 dbt-docs:
 	uv run dbt docs generate --project-dir dbt --profiles-dir dbt
 	uv run dbt docs serve --project-dir dbt --profiles-dir dbt
+
+# Dashboard local de solo lectura sobre Gold.
+app:
+	uv run streamlit run app/main.py
+
+# Warehouse sintético para demo/capturas; nunca usa datos reales.
+demo:
+	uv run python scripts/make_demo_warehouse.py
+
+# Evalúa reglas y escribe lake/alerts.log.
+alerts:
+	uv run python -m etl_running alerts run

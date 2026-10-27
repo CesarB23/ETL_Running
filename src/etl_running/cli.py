@@ -128,6 +128,16 @@ def build_parser() -> argparse.ArgumentParser:
     confirm.add_argument("--activity-id", type=int, required=True)
     report = subparsers.add_parser("plan-report", help="Cumplimiento semanal plan vs real.")
     report.add_argument("--week", type=_day, required=True)
+
+    alerts = subparsers.add_parser("alerts", help="Reglas de alerta sobre Gold.")
+    alerts_sub = alerts.add_subparsers(dest="alerts_command", metavar="SUBCOMANDO", required=True)
+    alerts_run = alerts_sub.add_parser("run", help="Evalúa y escribe lake/alerts.log.")
+    alerts_run.add_argument(
+        "--log",
+        type=Path,
+        default=None,
+        help="Ruta alternativa del log (por defecto: lake/alerts.log).",
+    )
     return parser
 
 
@@ -141,6 +151,10 @@ def _cmd_config(settings: Settings) -> int:
     print(f"lake_dir:          {settings.lake_dir}")
     print(f"running_type_keys: {', '.join(settings.running_type_keys)}")
     print(f"api_key:           {'definida' if settings.api_key else 'no definida'}")
+    print(
+        "api_key_caduca:    "
+        f"{settings.api_key_expires.isoformat() if settings.api_key_expires else 'no informada'}"
+    )
     return 0
 
 
@@ -233,6 +247,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "config":
             return _cmd_config(settings)
+        if args.command == "alerts":
+            from etl_running.alerts.runner import run_alerts
+
+            result = run_alerts(settings, log_path=args.log)
+            for alert in result.alerts:
+                print(f"{alert.severity.upper():8} {alert.code}: {alert.message}")
+            if not result.alerts:
+                print("Sin avisos con las reglas actuales.")
+            print(f"alertas: {len(result.alerts)} | log: {result.log_path}")
+            return 0
         if args.command == "plan":
             if args.plan_command == "load":
                 print("Plan cargado" if load_week(settings, args.path) else "Plan sin cambios")

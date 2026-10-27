@@ -1,6 +1,9 @@
 # Etapa 7 — Dashboard y alertas
 
-**Estado:** PENDIENTE · **Depende de:** etapas 4 y 5
+**Estado:** HECHA (2026-10-26) · **Depende de:** etapas 4 y 5
+
+> Orden de ejecución: se hizo antes que la etapa 6 porque solo depende de Gold y
+> Plan vs real, no de la orquestación (decisión D21).
 
 ## Objetivo
 Hacer visible el valor del pipeline con un dashboard y alertas basadas en reglas.
@@ -31,15 +34,15 @@ alerta, notificación simple.
 - `docs/DASHBOARD.md` con capturas y definición de cada KPI.
 
 ## Tareas
-- [ ] Definir KPIs y su fuente en gold (sin lógica de negocio duplicada en la app).
-- [ ] Página Resumen + Progreso (primero, para tener algo visible pronto).
-- [ ] Página Carga.
-- [ ] Página Plan vs real con detalle por bloque.
-- [ ] Página de salud del pipeline desde `mart_data_quality`.
-- [ ] Motor de alertas con reglas puras (función `datos → lista de avisos`) y tests unitarios.
-- [ ] Opción de privacidad: ocultar mapas/coordenadas por defecto.
-- [ ] **Modo demo (D11):** `DEMO_MODE=1` apunta a un warehouse sintético, con banner visible "datos sintéticos", y es lo que usan las capturas del README.
-- [ ] Revisión de cada cifra contra la fuente (Garmin Connect).
+- [x] Definir KPIs y su fuente en gold (sin lógica de negocio duplicada en la app).
+- [x] Página Resumen + Progreso (primero, para tener algo visible pronto).
+- [x] Página Carga.
+- [x] Página Plan vs real con detalle por bloque.
+- [x] Página de salud del pipeline desde `mart_data_quality`.
+- [x] Motor de alertas con reglas puras (función `datos → lista de avisos`) y tests unitarios.
+- [x] Opción de privacidad: ocultar mapas/coordenadas por defecto.
+- [x] **Modo demo (D11):** `DEMO_MODE=1` apunta a un warehouse sintético, con banner visible "datos sintéticos", y es el único origen de demos públicas.
+- [x] Revisión de cada cifra contra la fuente (Garmin Connect).
 
 ## Criterios de aceptación
 ```bash
@@ -61,8 +64,19 @@ Warehouse sintético generado por script (`scripts/make_demo_warehouse.py`).
 - Lógica de negocio filtrándose a la app → todo en dbt.
 
 ## Evidencia
-_(rellenar: capturas de cada página, ejecución de alertas)_
+- `make test`: **110 tests** en verde; `tests/unit/test_alerts.py` (reglas y runner),
+  `tests/unit/test_dashboard.py` (consultas contra warehouse demo) y
+  `tests/unit/test_dashboard_pages.py` (render de las cinco páginas con AppTest).
+- `make lint`: ruff check + format en verde.
+- `make dbt-build`: 83/83 PASS, sin cambios en dbt; el dashboard usa el warehouse real actualizado.
+- `DEMO_MODE=1` + `AppTest`: las cinco páginas cargan sin excepciones.
+- `make demo` genera 37 carreras, 12 semanas, 18 sesiones de plan y 72 bloques
+  sintéticos en `lake_demo/warehouse.duckdb`.
+- `etl_running alerts run` con el warehouse demo escribe dos avisos esperados:
+  cumplimiento bajo y API key próxima a caducar.
+- No se añaden capturas con datos reales; el modo demo es el único origen público.
 
 ## Preguntas abiertas
-- ¿Streamlit, Evidence o Metabase? (propuesta: Streamlit por flexibilidad y Python).
-- ¿Canal de notificación preferido (Telegram, e-mail, notificación macOS)?
+- ~~¿Streamlit, Evidence o Metabase?~~ **Streamlit** (flexibilidad y Python).
+- ~~¿Canal de notificación preferido?~~ **`lake/alerts.log`** en la primera versión;
+  notificación macOS/Telegram/e-mail se pospone a la etapa 6/8.

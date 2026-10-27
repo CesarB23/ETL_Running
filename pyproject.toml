@@ -16,6 +16,7 @@ dependencies = [
     "fitdecode>=0.10",
     "pytz>=2024.1",
     "dbt-duckdb>=1.9,<2",
+    "streamlit>=1.66.1",
 ]
 
 [project.scripts]

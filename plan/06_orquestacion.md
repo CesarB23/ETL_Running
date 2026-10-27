@@ -2,6 +2,9 @@
 
 **Estado:** PENDIENTE · **Depende de:** etapas 1–5
 
+> Se ejecutará **después de la etapa 7** (D21). Falta decidir el runtime: Mac con
+> `launchd`/`caffeinate` o una máquina siempre encendida.
+
 ## Objetivo
 Automatizar el pipeline de extremo a extremo con Dagster: dependencias explícitas,
 programación diaria, reintentos y visibilidad.
