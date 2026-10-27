@@ -75,6 +75,7 @@ Warehouse sintético generado por script (`scripts/make_demo_warehouse.py`).
 - `etl_running alerts run` con el warehouse demo escribe dos avisos esperados:
   cumplimiento bajo y API key próxima a caducar.
 - No se añaden capturas con datos reales; el modo demo es el único origen público.
+- PR #6 integrado en `main` (merge `ff55125`); CI y GitGuardian verdes.
 
 ## Preguntas abiertas
 - ~~¿Streamlit, Evidence o Metabase?~~ **Streamlit** (flexibilidad y Python).
