@@ -23,8 +23,8 @@ Manifiesto: `lake/bronze/_manifest.parquet` con
 | `activities` | `activity_id` | Solo running (`RUNNING_TYPE_KEYS`). Incluye `activity_type`, `is_manual`, `has_gps`, `start_utc`, `tz_local`, `distance_m`, `duration_s`, `moving_s`, `avg_speed_mps`, `avg_hr`, `max_hr`, `avg_cadence_spm`, `stride_m`, `elev_gain_m`, `elev_loss_m`, `calories`, `lap_count`, `moderate_intensity_min`, `vigorous_intensity_min`, `start_lat/lon` (opcional/anonimizable). |
 | `activity_laps` | `(activity_id, lap_index)` | Vueltas desde FIT: tiempo, distancia, velocidad, FC, cadencia, desnivel, `trigger`, y **`wkt_step_index`** (paso del workout que el reloj ejecutaba; nulo si no se corrió un workout). |
 | `activity_records` | `(activity_id, ts_utc)` | Serie segundo a segundo desde FIT: FC, velocidad, cadencia, altitud, lat/lon. |
-| `planned_workouts` | `(week_start, date)` | Sesión planificada: título, tipo, notas, `plan_hash`, `garmin_workout_id` (si se subió). |
-| `planned_steps` | `(planned_workout_id, step_order)` | Bloques: tipo, distancia o duración objetivo, rango de ritmo (m/s), recuperación. `step_order` es el mismo orden que usa Garmin, para casar con `wkt_step_index`. |
+| `planned_workouts` | `planned_workout_id` (`week_start/date`) | Sesión planificada: título, `plan_hash`, `garmin_workout_id` si existe en uploads local. |
+| `planned_steps` | `(planned_workout_id, step_seq)` | Pasos expandidos por repetición: tipo, objetivo y rango de ritmo. `step_order` Garmin puede repetirse entre series; `candidate_fit_index` es una hipótesis verificada por lap antes de usarla. |
 | `_quarantine/*` | — | Filas rechazadas con `reason` y `source_path`. |
 
 Los FIT (etapa 3) se descargan **solo para actividades running elegibles** desde
@@ -82,6 +82,56 @@ en gold ni en la UI por defecto; `treadmill_running` cuenta como running con `ha
 | `fct_training_load` | día | Carga diaria (minutos de intensidad ponderados), aguda (7 d), crónica (28 d), ACWR, `is_reliable`. |
 | `fct_weekly_summary` | semana | Km, tiempo, desnivel, nº sesiones, % cumplimiento del plan. |
 | `mart_data_quality` | dataset | Frescura, volumen, rechazados. |
+
+### Etapa 5: plan vs real (sin asociaciones ficticias)
+
+`plan load` guarda cada JSON semanal original como nueva versión inmutable de
+`plan/weekly_plan` en Bronze. Solo se cargan los JSON que existen. Silver crea
+`planned_workouts.parquet` y `planned_steps.parquet` con `plan_hash` y pasos
+expandidos (trabajo/recuperación por repetición, `step_seq` único y
+`step_order` Garmin 1-based). Los `workoutId` y nombres de uploads se leen
+**opcionalmente** de `../Garmin/data/uploads.json`: permanecen solo en Silver,
+nunca se copia el archivo original al repositorio.
+
+`plan link-workouts` consulta `get_activity_workouts` únicamente para carreras
+cerca de una fecha con upload. Solo crea una asociación en
+`silver/activity_workout_links.parquet` si el nombre API coincide **exactamente**
+con un único upload (ignorando mayúsculas) dentro de ±1 día; entonces el ID
+procede del upload, no se inventa desde el FIT.
+
+`plan confirm --date YYYY-MM-DD --activity-id N` guarda una confirmación manual
+local en `silver/plan_confirmations.parquet`, ligada al `plan_hash` de la sesión.
+Permite aceptar un entreno desplazado ±1 día sin subir la confianza de los laps
+ni reescribir los JSON originales. Si el plan cambia de hash, la confirmación deja
+de aplicar.
+
+Reglas en Gold:
+
+1. `int_plan_activity_match` prioriza confirmación manual (`confirmed_by_user`),
+   luego asociación por nombre API, luego fecha. Si no existe confirmación,
+   elige carrera no manual en la misma fecha, o ±1 día con menor confianza.
+   Usa duración/distancia estimadas para desempatar y no asigna una actividad a
+   dos sesiones. Sin carrera: `missed`; si el día aún no ha llegado: `upcoming`.
+2. `fct_plan_vs_actual` intenta emparejar cada paso con un lap cuyo
+   `wkt_step_index` coincida con el **índice candidato** `step_order - 1` y la
+   repetición ordinal, comprobando distancia/duración (20 % o 30 m/30 s). Si el
+   reloj agrupa varias repeticiones bajo el mismo `wkt_step_index`, agrupa los
+   laps contiguos en un tramo (`workout_step_group`) y usa el ritmo medio del
+   tramo; acepta que el tramo equivalga de 1 a 5 veces el objetivo y elige el
+   más cercano al ritmo prescrito. Después prueba segmentación por distancia
+   acumulada (solo si todas las distancias previas son conocidas) y, para una
+   sesión continua con un único bloque con ritmo, el total de la actividad.
+3. Un paso de ritmo es `met` si el ritmo real cae en `[fast-5, slow+5]` s/km,
+   `not_met` si es medible y queda fuera, y `unverifiable` si no hay evidencia.
+   Pasos sin ritmo objetivo (`recovery`, warmup) son `not_targeted`.
+   `confidence=high` exige asociación confirmada o por nombre API **y** un lap
+   plausible; un tramo agrupado es `medium`; segmentación o total de actividad
+   es `low`. Ningún paso sin lap puede ser `high`.
+4. `fct_plan_sessions` da un estado por sesión (`done`, `partial`, `missed`,
+   `upcoming`); `fct_unplanned_runs` distingue `no_plan` (sin JSON semanal) de
+   `unplanned_extra`. `fct_weekly_summary` excluye del denominador sesiones
+   futuras y muestra **NULL** en `plan_compliance_pct` cuando hay 0 bloques
+   verificables, en lugar de atribuir un 0 % engañoso.
 
 En etapa 4 los modelos dbt residen en el esquema `gold` de
 `lake/warehouse.duckdb`. `stg_activities`, `stg_activity_laps` y

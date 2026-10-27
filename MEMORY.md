@@ -3,24 +3,24 @@
 Este archivo es la memoria del proyecto. Se actualiza al cerrar cada tarea.
 Un agente nuevo debe leer esto después de `CLAUDE.md` y antes de empezar.
 
-_Última actualización: 2026-10-25 (fase de definición; respuestas del usuario incorporadas, sin código aún)._
+_Última actualización: 2026-10-26 (etapas 0–5 cerradas; siguiente: orquestación)._
 
 ## Estado de las etapas
 
 | # | Etapa | Estado | Plan |
 | --- | --- | --- | --- |
 | 0 | Fundamentos | HECHA | `plan/00_fundamentos.md` |
-| 1 | Bronze incremental + backfill | EN CURSO | `plan/01_bronze_ingesta.md` |
+| 1 | Bronze incremental + backfill | HECHA | `plan/01_bronze_ingesta.md` |
 | 2 | Silver (actividades running) | HECHA | `plan/02_silver.md` |
 | 3 | FIT → laps y records | HECHA | `plan/03_fit.md` |
 | 4 | Gold con dbt | HECHA | `plan/04_gold_dbt.md` |
-| 5 | Plan vs real | PENDIENTE | `plan/05_plan_vs_real.md` |
+| 5 | Plan vs real | HECHA | `plan/05_plan_vs_real.md` |
 | 6 | Orquestación | PENDIENTE | `plan/06_orquestacion.md` |
 | 7 | Dashboard y alertas | PENDIENTE | `plan/07_dashboard_alertas.md` |
 | 8 | Extras (ML, nube, observabilidad) | PENDIENTE | `plan/08_extras.md` |
 
 Estados: `PENDIENTE` · `EN CURSO` · `BLOQUEADA` · `HECHA`.
-**Etapa activa:** ninguna; la siguiente es la 5 (Plan vs real). La etapa 1 conserva `weekly_plan`, incluido en el alcance de la etapa 5.
+**Etapa activa:** ninguna; la siguiente es la 6 (Orquestación).
 
 ## Contexto del usuario y objetivo
 
@@ -80,10 +80,10 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 - **Actividades:** 20 registros entre 2026-09-12 y 2026-10-21. Tipos: 16 `running`,
   3 `other`, 1 `cycling`. El límite fue `--activity-limit 20`; la ventana objetivo es
   2026-08-17 en adelante, así que faltan ~4 semanas por recuperar.
-- **Estado local de `../Garmin/data/` (2026-10-25):** vacío; ya no están los exports de
+- **Estado local de `../Garmin/data/` (2026-10-25):** estaba vacío; ya no estaban los exports de
   ejemplo ni `uploads.json`. Los hechos de esta sección se midieron antes de eso.
   Para ETL_Running el backfill desde la API reconstruye todo; el manifiesto de subidas
-  (workoutId ↔ fecha) hay que recuperarlo o regenerarlo (ver etapa 5).
+  (workoutId ↔ fecha) reapareció después y se usa desde etapa 5; no se versiona.
 - **Campos útiles por actividad:** `activityId`, `startTimeLocal/GMT`, `distance` (m),
   `duration`, `movingDuration`, `elapsedDuration`, `averageSpeed`, `maxSpeed` (m/s),
   `averageHR`, `maxHR`, `averageRunningCadenceInStepsPerMinute`, `avgStrideLength`,
@@ -118,7 +118,9 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
   tiempo o distancia, `warnings`.
 - Zonas Garmin son metadato; el objetivo del reloj es el ritmo.
 - Subidas registradas en `../Garmin/data/uploads.json` (hash + `workoutId` + fecha);
-  actualmente ese archivo no existe (ver arriba).
+  volvió a estar disponible en la etapa 5 (4 workouts por fecha); se consulta
+  solo localmente y no se versiona. Los uploads existentes son de la semana del
+  2026-10-26, para la que aún no hay carreras correspondientes.
 - Flujo real del usuario (D12): crear con el script → programar → enviar al reloj →
   correr el workout → la actividad queda con laps por paso. Esto permite enlazar
   plan y ejecución con alta confianza.
@@ -143,6 +145,16 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 - **Comprobación de privacidad:** buscar *valores* (`"ownerFullName": "`), no nombres de
   clave: estos aparecen legítimamente en el anonimizador y como `null` en fixtures.
 - **Repo git:** `main`, commit inicial `c23d5ad`, publicado en GitHub con CI en verde.
+- **Plan vs real (etapa 5):** 4 confirmaciones manuales locales para la semana
+  2026-10-19; dos sesiones se corrieron +1 día y el informe lo muestra. El FIT
+  agrupa repeticiones bajo el mismo `wkt_step_index`, por lo que el ritmo se mide
+  por tramo contiguo (`workout_step_group`, confianza media): 44/44 bloques
+  verificables y 18 cumplidos (40,9 %). La API devuelve la definición del workout
+  ejecutado (pasos/objetivos) pero sin `workoutId`; ingerirla permitiría separar
+  repeticiones individuales.
+- **Deuda de tolerancia:** el JSON del plan usa un ritmo puntual (5:30) y el
+  workout del reloj a veces un rango (5:20–5:40). Se mantiene ±5 s/km; decidir si
+  se amplía a ±10 s/km para no marcar como fallo un bloque dentro del rango Garmin.
 
 ## Registro de cambios
 
@@ -161,3 +173,4 @@ Fuente: `../Garmin/data/2026-10-21/*.json`, descargados con la Personal API.
 | 2026-10-26 | Etapa 3: 38 FIT ZIP descargados solo a lake; 587 laps, 20 610 records, 0 excepciones de distancia. FIT con workout: 34/35 laps tienen wkt_step_index, API asocia workout sin exponer workoutId. Parser, descarga, gráfica HTML y fixture FIT sintético implementados. |
 | 2026-10-26 | PR #3 FIT integrado; etapa 4 Gold EN CURSO: dbt-duckdb + dbt_utils, 6 marts, 3 vistas staging, 34 pruebas dbt, 44/44 PASS y 84 tests Python incluyendo lake sintético. 38 carreras, 587 laps; ACWR y km cotejados con Silver. Pendiente comparación de 3 ritmos con UI Garmin (±2 s/km). |
 | 2026-10-26 | Etapa 4 HECHA: el usuario confirmó en Garmin Connect coincidencia exacta de ritmo medio de 3 carreras (23/10: 6:51, 24/10: 6:03, 25/10: 8:46 min/km). |
+| 2026-10-26 | PR #4 Gold integrado (CI verde). Etapa 5 HECHA: 2 JSON semanales a bronze, 8 sesiones/160 pasos silver, 4 uploads con workoutId locales; 4 carreras confirmadas manualmente (dos con +1 día). Respaldo por tramos del FIT: 44/44 bloques verificables y 18 cumplidos (40,9 %); 83/83 recursos dbt y 90 tests Python. Semana 26: cuatro `upcoming`. Etapa 1 HECHA al completar weekly_plan. |

@@ -105,3 +105,80 @@ models:
         data_tests: [unique, not_null]
       - name: row_count
         data_tests: [not_null]
+  - name: stg_planned_workouts
+    description: Sesiones semanales de running cargadas desde el JSON del plan; uploads opcionales.
+    columns:
+      - name: planned_workout_id
+        data_tests: [unique, not_null]
+      - name: scheduled_date
+        data_tests: [not_null]
+  - name: stg_planned_steps
+    description: Pasos ejecutables expandidos por repetición; índice FIT candidato aún sin confirmar.
+    columns:
+      - name: planned_workout_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_planned_workouts')
+                field: planned_workout_id
+      - name: step_seq
+        data_tests: [not_null]
+  - name: stg_activity_workout_links
+    description: Asociación confirmada por nombre API exacto contra upload local (no inferida por fecha).
+    columns:
+      - name: activity_id
+        data_tests: [unique, not_null]
+      - name: planned_workout_id
+        data_tests: [unique, not_null]
+  - name: stg_plan_confirmations
+    description: Confirmaciones manuales locales, invalidadas si cambia plan_hash.
+    columns:
+      - name: planned_workout_id
+        data_tests: [unique, not_null]
+      - name: activity_id
+        data_tests: [unique, not_null]
+  - name: int_plan_activity_match
+    description: Un match conservador por fecha por sesión (nunca un ID no verificado).
+    columns:
+      - name: planned_workout_id
+        data_tests: [unique, not_null]
+      - name: activity_id
+        data_tests: [unique]
+  - name: fct_plan_vs_actual
+    description: Un paso prescrito frente a lap respaldado por índice o segmento medido (confianza baja).
+    columns:
+      - name: planned_step_id
+        data_tests: [unique, not_null]
+      - name: match_method
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [wkt_step, workout_step_group, distance_segmentation, activity_total, none]
+      - name: confidence
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [high, medium, low, none]
+  - name: fct_plan_sessions
+    description: Estado de cada sesión del plan y bloques de ritmo cumplidos.
+    columns:
+      - name: planned_workout_id
+        data_tests: [unique, not_null]
+      - name: activity_id
+        data_tests: [unique]
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [done, partial, missed, upcoming]
+  - name: fct_unplanned_runs
+    description: Carreras sin sesión asignada; no_plan en semanas sin JSON.
+    columns:
+      - name: activity_id
+        data_tests: [unique, not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [no_plan, unplanned_extra]

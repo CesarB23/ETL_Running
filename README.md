@@ -71,3 +71,22 @@ uv run python -c "import duckdb; print(duckdb.connect('lake/warehouse.duckdb', r
 
 El código y las pruebas de CI utilizan **únicamente datos sintéticos**; tu lake
 real nunca se sube al repositorio.
+
+## Plan vs real
+
+Desde la raíz del repo, con tus JSON de semana (no se versionan):
+
+```bash
+uv run python -m etl_running plan load ../Garmin/workouts/semana_2026-10-19.json
+uv run python -m etl_running silver build
+uv run python -m etl_running plan link-workouts   # opcional: requiere API key
+uv run python -m etl_running plan confirm --date 2026-10-20 --activity-id 123456789
+make dbt-build
+uv run python -m etl_running plan-report --week 2026-10-19
+```
+
+`../Garmin/data/uploads.json` se usa solo si existe para contrastar el nombre
+del workout con la API; no se versiona. `plan confirm` registra en local que un
+entreno se corrió otro día (±1) sin modificar el plan original. Semanas sin JSON
+son `no_plan` y los ritmos sin lap, tramo o segmento verificable quedan **sin
+dato**, no como fallo.

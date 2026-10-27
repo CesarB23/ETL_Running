@@ -16,3 +16,16 @@ sources:
         description: Filas rechazadas por Silver durante normalización.
         config:
           external_location: "{{ env_var('LAKE_DIR', 'lake') }}/silver/_quarantine/activities.parquet"
+      - name: planned_workouts
+        config:
+          external_location: "{{ env_var('LAKE_DIR', 'lake') }}/silver/planned_workouts.parquet"
+      - name: planned_steps
+        config:
+          external_location: "{{ env_var('LAKE_DIR', 'lake') }}/silver/planned_steps.parquet"
+      - name: activity_workout_links
+        config:
+          external_location: "{{ env_var('LAKE_DIR', 'lake') }}/silver/activity_workout_links.parquet"
+      - name: plan_confirmations
+        description: Confirmaciones explícitas del usuario, ligadas al hash de la sesión.
+        config:
+          external_location: "{{ env_var('LAKE_DIR', 'lake') }}/silver/plan_confirmations.parquet"
