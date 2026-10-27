@@ -1,7 +1,11 @@
-.PHONY: setup test lint fmt clean dbt-build dbt-docs app demo alerts
+.PHONY: setup web-setup test lint fmt clean dbt-build dbt-docs app app-dev demo alerts
 
 setup:
 	uv sync
+	npm --prefix web ci
+
+web-setup:
+	npm --prefix web ci
 
 test:
 	uv run pytest
@@ -27,9 +31,14 @@ dbt-docs:
 	uv run dbt docs generate --project-dir dbt --profiles-dir dbt
 	uv run dbt docs serve --project-dir dbt --profiles-dir dbt
 
-# Dashboard local de solo lectura sobre Gold.
+# Interfaz React/TypeScript compilada servida localmente sobre Gold.
 app:
-	uv run streamlit run app/main.py
+	npm --prefix web run build
+	uv run python -m app.api
+
+# Desarrollo: Vite con recarga rápida y API Python en paralelo.
+app-dev:
+	./scripts/run_web_dev.sh
 
 # Warehouse sintético para demo/capturas; nunca usa datos reales.
 demo:

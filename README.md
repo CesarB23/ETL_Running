@@ -99,10 +99,14 @@ dato**, no como fallo.
 La app lee exclusivamente Gold y no duplica lógica de negocio:
 
 ```bash
+make setup
 make dbt-build
-make app                 # Streamlit en http://localhost:8501
+make app                 # React + TypeScript en http://localhost:8000
 make alerts              # reglas → lake/alerts.log
 ```
+
+Para desarrollo frontend con recarga rápida: `make app-dev` abre Vite en
+`http://localhost:5173` y levanta la API local en `127.0.0.1:8000`.
 
 Para probar sin datos personales:
 
@@ -111,10 +115,17 @@ make demo                # lake_demo/warehouse.duckdb sintético
 DEMO_MODE=1 make app
 ```
 
-Páginas: Resumen, Progreso, Carga, Plan vs real y Salud del pipeline. Las reglas
-iniciales cubren ACWR > 1,5, más de 10 días sin correr, cumplimiento < 50 %,
+La interfaz tiene pestañas separadas para Actividades, Progreso, Carga y Salud del
+pipeline. Actividades muestra recorrido GPS renderizado localmente, laps FIT y
+comparación de ritmo con planes vinculados explícitamente. Las reglas iniciales
+cubren ACWR > 1,5, más de 10 días sin correr, cumplimiento < 50 %,
 warehouse con más de 36 h y caducidad de la API key. Detalles en
 [`docs/DASHBOARD.md`](docs/DASHBOARD.md).
 
+El mapa usa teselas públicas de OpenStreetMap. Al cargar una ruta, el proveedor
+puede inferir la zona visible por las solicitudes de teselas; los datos Gold y FIT
+no se envían al proveedor.
+
 Hasta la etapa 6 no hay schedule: la actualización de datos y las alertas se
-lanzan manualmente. No se envían datos a servicios externos.
+lanzan manualmente. Fuera de las teselas cartográficas OSM, la app no usa servicios
+externos.

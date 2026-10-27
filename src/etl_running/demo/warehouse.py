@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import random
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -71,6 +72,29 @@ SCHEMA = {
         steps_unverifiable BIGINT,
         indexed_steps BIGINT,
         status VARCHAR
+    """,
+    "fct_run_laps": """
+        activity_id BIGINT,
+        lap_index INTEGER,
+        distance_m DOUBLE,
+        duration_s DOUBLE,
+        elapsed_s DOUBLE,
+        avg_hr DOUBLE,
+        intensity VARCHAR,
+        lap_trigger VARCHAR,
+        wkt_step_index INTEGER,
+        pace_min_km DOUBLE
+    """,
+    "fct_run_track": """
+        activity_id BIGINT,
+        ts_utc TIMESTAMP,
+        distance_m DOUBLE,
+        lat DOUBLE,
+        lon DOUBLE,
+        speed_mps DOUBLE,
+        altitude_m DOUBLE,
+        heart_rate DOUBLE,
+        timer_running BOOLEAN
     """,
     "fct_plan_vs_actual": """
         planned_step_id VARCHAR PRIMARY KEY,
@@ -318,6 +342,42 @@ def build_demo_warehouse(path: Path | str, *, seed: int = 42, weeks: int = DEMO_
         )
         for r in runs
     ]
+    lap_rows = []
+    track_rows = []
+    for run in runs:
+        lap_distance = run["distance_m"] / 4
+        lap_duration = run["duration_s"] / 4
+        for lap_index in range(1, 5):
+            lap_rows.append(
+                (
+                    run["activity_id"],
+                    lap_index,
+                    lap_distance,
+                    lap_duration,
+                    lap_duration,
+                    run["avg_hr"],
+                    "active",
+                    "manual",
+                    lap_index,
+                    lap_duration / 60 / (lap_distance / 1000),
+                )
+            )
+        # Ruta sintética deliberadamente ficticia; no se deriva de ubicaciones reales.
+        for point_index in range(12):
+            angle = point_index / 11 * 6.283185307179586
+            track_rows.append(
+                (
+                    run["activity_id"],
+                    run["start_utc"] + timedelta(seconds=run["duration_s"] * point_index / 11),
+                    run["distance_m"] * point_index / 11,
+                    39.5 + 0.006 * math.sin(angle),
+                    -98.35 + 0.008 * math.cos(angle),
+                    run["avg_speed_mps"],
+                    120 + 8 * math.sin(angle * 2),
+                    run["avg_hr"],
+                    True,
+                )
+            )
 
     daily_load: dict[date, float] = {}
     for r in runs:
@@ -402,6 +462,8 @@ def build_demo_warehouse(path: Path | str, *, seed: int = 42, weeks: int = DEMO_
         _insert(con, "fct_weekly_summary", weekly_rows)
         _insert(con, "fct_plan_sessions", sessions)
         _insert(con, "fct_plan_vs_actual", blocks)
+        _insert(con, "fct_run_laps", lap_rows)
+        _insert(con, "fct_run_track", track_rows)
         _insert(con, "mart_data_quality", quality_rows)
 
     return target
