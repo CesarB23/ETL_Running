@@ -84,9 +84,10 @@ caducidad de la API key hay que informar la fecha:
 GARMIN_API_KEY_EXPIRES=2026-12-01
 ```
 
-Si no hay avisos, el log deja una línea `INFO | no_alerts`. Hasta la etapa 6 no hay
-schedule: las alertas solo se ejecutan cuando lanzas `make alerts` (o un cron
-externo). La notificación es local; no se envían datos a Telegram ni e-mail.
+Si no hay avisos, el log deja una línea `INFO | no_alerts`. El schedule Dagster
+diario también evalúa las alertas al final del pipeline; `make alerts` permite
+ejecutarlas manualmente. La notificación es local; no se envían datos a Telegram
+ni e-mail.
 
 ## Tests
 
@@ -99,8 +100,8 @@ uv run pytest tests/unit/test_alerts.py tests/unit/test_dashboard.py -q
 - Runner: warehouse temporal, escritura del log y ausencia de warehouse.
 - Consultas: warehouse demo sintético; se comprueba que todos los marts
   necesarios existen y devuelven datos.
-- La UI React se compila con `npm --prefix web run build`; las consultas Python
-  mantienen sus tests con warehouse sintético.
+- La UI React se compila con `npm --prefix web run build`; las consultas y API
+  Python se prueban con warehouse sintético.
 
 ## Privacidad
 
@@ -113,8 +114,8 @@ uv run pytest tests/unit/test_alerts.py tests/unit/test_dashboard.py -q
 
 ## Limitaciones actuales
 
-- Sin orquestación, los datos no se actualizan solos; el dashboard refleja el
-  último `make dbt-build`.
+- Dagster actualiza Gold según schedule cuando `make dev`/daemon está activo; sin
+  orquestador, el dashboard refleja el último `make dbt-build` manual.
 - La frescura puede marcar `data_stale` si no se reconstruye Gold en 36 h. Es
   información real, no un fallo de la app.
 - No hay autenticación: está pensado para `localhost`.

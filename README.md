@@ -32,8 +32,8 @@ uv run python -m etl_running config
 ## Estado
 
 Etapas 0–5 cerradas y etapa 7 (dashboard y alertas) implementada. La etapa 6
-(orquestación con Dagster) queda pendiente de decidir el runtime. El detalle está
-en `MEMORY.md` y `plan/README.md`.
+(orquestación con Dagster) está en curso; el runtime local usa `launchd` y
+`caffeinate` (D23). El detalle está en `MEMORY.md` y `plan/README.md`.
 
 Con bronze cargado, construye la tabla de actividades de running en silver:
 
@@ -126,6 +126,7 @@ El mapa usa teselas públicas de OpenStreetMap. Al cargar una ruta, el proveedor
 puede inferir la zona visible por las solicitudes de teselas; los datos Gold y FIT
 no se envían al proveedor.
 
-Hasta la etapa 6 no hay schedule: la actualización de datos y las alertas se
-lanzan manualmente. Fuera de las teselas cartográficas OSM, la app no usa servicios
-externos.
+Dagster incluye schedule diario a las 20:00 America/Mexico_City y sensor de actividades;
+el daemon debe estar activo (`make dev`) para evaluarlos. La instalación del
+LaunchAgent es opcional y local (`make launchd-install`). Fuera de las teselas OSM,
+la app no usa servicios externos.

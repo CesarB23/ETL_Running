@@ -42,7 +42,7 @@ Detalle en `docs/ARCHITECTURE.md` y `docs/DATA_MODEL.md`.
 | Transformaciones | dbt-duckdb |
 | Orquestación | Dagster (desde etapa 6) |
 | Calidad | Pandera (silver) + dbt tests (gold) |
-| Dashboard | Streamlit (etapa 7) |
+| Dashboard | React + TypeScript, API Python local (etapa 7) |
 | Tests / lint | pytest, ruff |
 | CLI | argparse (stdlib) |
 | FIT | `fitdecode` |
@@ -65,7 +65,8 @@ ETL_Running/
 │   └── common/      config, logging, fechas/zonas horarias
 ├── dbt/             proyecto dbt (staging, marts, tests)
 ├── orchestration/   assets, schedules y sensores de Dagster
-├── app/             dashboard Streamlit
+├── app/             API local de solo lectura sobre Gold
+├── web/             interfaz React + TypeScript
 ├── tests/           unit/ integration/ fixtures/ (solo datos sintéticos)
 ├── lake/            (gitignored) bronze/ silver/ gold/ + warehouse.duckdb
 └── Makefile         atajos: setup, ingest, test, dbt, run
@@ -134,7 +135,7 @@ make lint       # ruff
 make ingest     # ingesta incremental (desde etapa 1)
 make dbt-build  # dbt run + test (desde etapa 4)
 make dev        # dagster dev (desde etapa 6)
-make app        # streamlit (desde etapa 7)
+make app        # dashboard React/TypeScript (API Python local sobre Gold)
 ```
 
 ## Definición de "hecho" para cualquier tarea

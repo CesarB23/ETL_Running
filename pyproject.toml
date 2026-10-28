@@ -16,7 +16,10 @@ dependencies = [
     "fitdecode>=0.10",
     "pytz>=2024.1",
     "dbt-duckdb>=1.9,<2",
-    "streamlit>=1.66.1",
+    "pandas>=2.2,<4",
+    "dagster>=1.13.27",
+    "dagster-webserver>=1.13.27",
+    "dagster-dbt>=0.29.27",
 ]
 
 [project.scripts]

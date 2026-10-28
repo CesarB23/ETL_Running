@@ -1,4 +1,4 @@
-.PHONY: setup web-setup test lint fmt clean dbt-build dbt-docs app app-dev demo alerts
+.PHONY: setup web-setup test lint fmt clean dbt-build dbt-manifest dbt-docs app app-dev demo alerts dev run-daily launchd-install
 
 setup:
 	uv sync
@@ -27,6 +27,10 @@ dbt-build:
 	uv run dbt deps --project-dir dbt --profiles-dir dbt
 	uv run dbt build --project-dir dbt --profiles-dir dbt
 
+dbt-manifest:
+	uv run dbt deps --project-dir dbt --profiles-dir dbt
+	uv run dbt parse --project-dir dbt --profiles-dir dbt
+
 dbt-docs:
 	uv run dbt docs generate --project-dir dbt --profiles-dir dbt
 	uv run dbt docs serve --project-dir dbt --profiles-dir dbt
@@ -47,3 +51,17 @@ demo:
 # Evalúa reglas y escribe lake/alerts.log.
 alerts:
 	uv run python -m etl_running alerts run
+
+# Dagster UI local: grafo, schedule, sensor, backfills y checks.
+dev:
+	mkdir -p dagster_home
+	DAGSTER_HOME=$(CURDIR)/dagster_home uv run dagster dev -m orchestration.definitions -p 3000
+
+# Ejecución manual completa. El schedule usa la misma job con partición diaria.
+run-daily:
+	mkdir -p dagster_home
+	DAGSTER_HOME=$(CURDIR)/dagster_home uv run dagster job execute -m orchestration.definitions -j daily_pipeline
+
+# Instala el LaunchAgent del Mac (ver docs/ORCHESTRATION.md).
+launchd-install:
+	./scripts/install_launchd.sh

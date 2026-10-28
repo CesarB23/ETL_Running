@@ -27,7 +27,7 @@ misma disciplina (criterios + evidencia).
 
 ### D. Publicación como portafolio (recomendada)
 - Generador de **datos sintéticos realistas** (`scripts/make_demo_data.py`) que reproduce la forma de bronze/FIT, con semilla fija, para que cualquiera ejecute el pipeline completo sin cuenta Garmin.
-- Demo pública (Streamlit Community Cloud u otra) con warehouse sintético.
+- Demo pública (hosting estático para React u otra opción) con warehouse sintético.
 - README con diagrama, decisiones de diseño (ADR), capturas y cómo correr; `docs/` pulido; CI con badges.
 - Auditoría de privacidad antes de publicar: `git log` y árbol sin `.env`, `lake/`, coordenadas, nombres ni IDs reales (herramienta tipo `gitleaks` + test propio).
 - Verificación: un tercero clona el repo y levanta la demo con un solo comando (`make demo`); la auditoría de secretos pasa en CI.

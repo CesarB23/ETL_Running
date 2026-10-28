@@ -9,12 +9,11 @@
 Hacer visible el valor del pipeline con un dashboard y alertas basadas en reglas.
 
 ## Resultado visible
-`make app` abre Streamlit con páginas de:
-1. **Resumen**: km semanales, tiempo, número de sesiones, última actividad.
+`make app` abre una interfaz React + TypeScript con pestañas de:
+1. **Actividades**: mapa OpenStreetMap, laps FIT y ritmos real/plan por distancia o tiempo.
 2. **Progreso**: ritmo y eficiencia aeróbica en el tiempo.
-3. **Carga**: aguda/crónica y ACWR con zonas.
-4. **Plan vs real**: cumplimiento semanal y detalle por sesión.
-5. **Salud del pipeline**: frescura y calidad de datos.
+3. **Carga**: aguda/crónica y ACWR.
+4. **Salud del pipeline**: frescura y calidad de datos.
 
 Y un archivo `alerts.log` con avisos generados por reglas.
 
@@ -24,7 +23,7 @@ alerta, notificación simple.
 **Fuera:** modelos predictivos (etapa 8), autenticación multiusuario.
 
 ## Entregables
-- `app/main.py` y `app/pages/*.py`, `app/queries.py` (SQL contra marts, nunca contra silver).
+- `web/` (React/TypeScript), `app/api.py`, `app/queries.py` (consultas a Gold, nunca Silver).
 - `src/etl_running/alerts/rules.py` y `etl_running alerts run`.
 - Reglas iniciales (umbrales en configuración):
   - ACWR > 1.5 (solo si `is_reliable`) → riesgo de sobrecarga.
@@ -37,10 +36,10 @@ alerta, notificación simple.
 - [x] Definir KPIs y su fuente en gold (sin lógica de negocio duplicada en la app).
 - [x] Página Resumen + Progreso (primero, para tener algo visible pronto).
 - [x] Página Carga.
-- [x] Página Plan vs real con detalle por bloque.
+- [x] Vista Actividades con mapa, ritmo por registro, promedios de vuelta y plan superpuesto.
 - [x] Página de salud del pipeline desde `mart_data_quality`.
 - [x] Motor de alertas con reglas puras (función `datos → lista de avisos`) y tests unitarios.
-- [x] Opción de privacidad: ocultar mapas/coordenadas por defecto.
+- [x] OSM con atribución y aviso de que las peticiones de teselas revelan la zona visualizada.
 - [x] **Modo demo (D11):** `DEMO_MODE=1` apunta a un warehouse sintético, con banner visible "datos sintéticos", y es el único origen de demos públicas.
 - [x] Revisión de cada cifra contra la fuente (Garmin Connect).
 
@@ -64,20 +63,20 @@ Warehouse sintético generado por script (`scripts/make_demo_warehouse.py`).
 - Lógica de negocio filtrándose a la app → todo en dbt.
 
 ## Evidencia
-- `make test`: **110 tests** en verde; `tests/unit/test_alerts.py` (reglas y runner),
-  `tests/unit/test_dashboard.py` (consultas contra warehouse demo) y
-  `tests/unit/test_dashboard_pages.py` (render de las cinco páginas con AppTest).
+- `make test`: tests Python en verde, con consultas/API de actividades contra
+  warehouse sintético.
 - `make lint`: ruff check + format en verde.
-- `make dbt-build`: 83/83 PASS, sin cambios en dbt; el dashboard usa el warehouse real actualizado.
-- `DEMO_MODE=1` + `AppTest`: las cinco páginas cargan sin excepciones.
+- `npm --prefix web run build`: TypeScript y bundle Vite compilan.
+- `make dbt-build`: el Gold incluye `fct_run_track` y `fct_run_laps` para el mapa y las series.
+- `DEMO_MODE=1`: API y consultas usan exclusivamente un warehouse sintético.
 - `make demo` genera 37 carreras, 12 semanas, 18 sesiones de plan y 72 bloques
   sintéticos en `lake_demo/warehouse.duckdb`.
 - `etl_running alerts run` con el warehouse demo escribe dos avisos esperados:
   cumplimiento bajo y API key próxima a caducar.
-- No se añaden capturas con datos reales; el modo demo es el único origen público.
-- PR #6 integrado en `main` (merge `ff55125`); CI y GitGuardian verdes.
+- El modo demo es el único origen de capturas y demos públicas; no se versionan datos personales.
+- Commit React `336662c` creado localmente (pendiente de push).
 
 ## Preguntas abiertas
-- ~~¿Streamlit, Evidence o Metabase?~~ **Streamlit** (flexibilidad y Python).
+- **Interfaz:** React + TypeScript, con API Python local de solo lectura.
 - ~~¿Canal de notificación preferido?~~ **`lake/alerts.log`** en la primera versión;
   notificación macOS/Telegram/e-mail se pospone a la etapa 6/8.
