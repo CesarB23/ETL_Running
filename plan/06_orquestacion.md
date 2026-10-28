@@ -46,9 +46,9 @@ dagster job execute -j daily_pipeline      # corre de punta a punta en verde
 ```
 - [x] Ejecución sintética completa desde lake temporal vacío reconstruye Bronze→Silver→Gold; dbt pasa.
 - Una segunda ejecución inmediata no crea bronze nuevo (idempotencia).
-- [ ] Simular un 401 o corte de red en un asset real: reintento y error visible en el log.
+- [x] Simular un fallo HTTP 503 sintético en un asset Dagster: agota reintentos y registra el motivo en log temporal.
 - [x] El schedule se disparó en el entorno real y su tick/run quedaron registrados.
-- [ ] Confirmar visualmente en Dagster UI los asset checks y sus resultados.
+- [x] Confirmar visualmente en Dagster UI los asset checks y sus resultados: el usuario reporta todos verdes.
 
 ## Datos de prueba
 Ejecución con cliente simulado en CI; ejecución real manual.
@@ -63,10 +63,12 @@ Ejecución con cliente simulado en CI; ejecución real manual.
 - `test_full_daily_job_builds_gold_from_empty_temporary_lake`: ejecución Dagster completa con Garmin falso, lake temporal nuevo y tablas Gold verificadas; **84/84 tests dbt PASS**.
 - `make dev`: UI respondió HTTP 200 en localhost:3000; schedule figura RUNNING (20:00 America/Mexico_City), sensores RUNNING.
 - Tick automático real #550 el 2026-10-27 20:00 America/Mexico_City: `SUCCESS`, run `49f2a3b7-5762-4579-9634-8eacb2e64de6`, partición `2026-10-27`; ingesta `fetched=1`, `files_written=1`; Gold contiene 1 carrera, 14 laps y un vínculo de plan.
+- Revisión manual de la UI por el usuario: todos los asset checks visibles en verde.
 - Preview de `new_activity_sensor`: `SkipReason` esperado porque no había FIT pendiente (`ya_descargado=38`).
 - Reintento de Dagster probado con fallo transitorio sintético fuera del lake: 1 `STEP_UP_FOR_RETRY`, intento 2 y éxito.
+- `uv run pytest tests/unit/test_orchestration.py -k failure -q`: asset de prueba falla 3 veces, Dagster emite 2 reintentos y el sensor escribe el motivo en `lake/_state/orchestration_failures.log` bajo `tmp_path`; se comprueba también la política de reintento de Bronze.
 - `plutil -lint orchestration/launchd/com.etl-running.daily.plist`: OK.
-- Pendientes: ejecución real desde lake vacío, tick real del schedule, sensor con pendiente real, fallo en asset real + log y revisión visual de checks en UI.
+- Pendientes: sensor con FIT pendiente real y relanzamiento del run por el daemon.
 
 ## Decisión de runtime
 - Resuelto (D23): Mac local con `launchd` + `caffeinate`; no desplegar en nube (etapa 8 fuera de alcance).

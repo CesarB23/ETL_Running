@@ -119,7 +119,13 @@ def pipeline_failure_log(context: RunFailureSensorContext) -> None:
     settings = Settings.from_env()
     path = settings.lake_dir / "_state" / "orchestration_failures.log"
     path.parent.mkdir(parents=True, exist_ok=True)
-    message = getattr(context.failure_event, "message", None) or "sin detalle"
+    failure_event = context.failure_event
+    failure_data = getattr(failure_event, "event_specific_data", None)
+    error = getattr(failure_data, "error", None)
+    root_error = getattr(error, "cause", None) or getattr(error, "context", None) or error
+    message = getattr(root_error, "message", None) or getattr(error, "message", None)
+    message = message or getattr(failure_event, "message", None)
+    message = (str(message).splitlines()[0] if message else "sin detalle")[:500]
     run = context.dagster_run
     line = (
         f"{datetime.now(UTC).isoformat()} | job={run.job_name} | run_id={run.run_id} | "

@@ -13,9 +13,17 @@ import polars as pl
 import pytest
 from dagster import (
     AssetKey,
+    AssetSelection,
+    DagsterEventType,
+    DagsterInstance,
+    Definitions,
     ResourceDefinition,
+    RetryPolicy,
+    asset,
+    build_run_status_sensor_context,
     build_schedule_context,
     build_sensor_context,
+    define_asset_job,
     materialize,
 )
 from tests.unit.fakes import FakeClient
@@ -250,3 +258,63 @@ def test_new_activity_sensor_requests_run_for_pending_fit(
     assert request.tags["trigger"] == "new_activity"
     today_mexico = datetime.now(ZoneInfo("America/Mexico_City")).date().isoformat()
     assert request.partition_key == today_mexico
+
+
+def test_pipeline_failure_retries_and_sensor_logs_failure(tmp_path, monkeypatch):
+    """Fallo 503 sintético: reintentos Dagster y log de fallo en lake temporal."""
+    from orchestration.assets.bronze import bronze_activities
+    from orchestration.definitions import defs
+    from orchestration.sensors import pipeline_failure_log
+
+    assert bronze_activities.op.retry_policy.max_retries == 2
+    attempts = {"count": 0}
+
+    @asset(retry_policy=RetryPolicy(max_retries=2, delay=0))
+    def fail_three_times():
+        attempts["count"] += 1
+        raise RuntimeError("fallo controlado HTTP 503 de Garmin")
+
+    failing_job = Definitions(
+        assets=[fail_three_times],
+        jobs=[
+            define_asset_job(
+                name="daily_pipeline",
+                selection=AssetSelection.assets(fail_three_times),
+            )
+        ],
+    ).resolve_job_def("daily_pipeline")
+
+    lake = tmp_path / "failure-lake"
+    monkeypatch.setenv("LAKE_DIR", str(lake))
+    monkeypatch.setenv("START_DATE", "2026-08-17")
+
+    with DagsterInstance.ephemeral() as instance:
+        result = failing_job.execute_in_process(
+            instance=instance,
+            raise_on_error=False,
+        )
+        failed_run = instance.get_run_by_id(result.run_id)
+        failure_events = result.get_step_failure_events()
+        retry_count = sum(
+            event.event_type_value == DagsterEventType.STEP_UP_FOR_RETRY.value
+            for event in result.all_events
+        )
+        assert failed_run is not None
+        assert len(failure_events) == 1
+        assert failed_run.status.value == "FAILURE"
+        assert attempts["count"] == 3
+        assert retry_count == 2
+
+        context = build_run_status_sensor_context(
+            sensor_name="pipeline_failure_log",
+            dagster_event=failure_events[0],
+            dagster_instance=instance,
+            dagster_run=failed_run,
+            repository_def=defs.get_repository_def(),
+        )
+        pipeline_failure_log._run_status_sensor_fn(context)
+
+    failure_log = lake / "_state" / "orchestration_failures.log"
+    contents = failure_log.read_text(encoding="utf-8")
+    assert failed_run.run_id in contents
+    assert "fallo controlado HTTP 503 de Garmin" in contents
