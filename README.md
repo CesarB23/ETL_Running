@@ -32,8 +32,8 @@ uv run python -m etl_running config
 ## Estado
 
 Etapas 0–5 cerradas y etapa 7 (dashboard y alertas) implementada. La etapa 6
-(orquestación con Dagster) queda pendiente de decidir el runtime. El detalle está
-en `MEMORY.md` y `plan/README.md`.
+(orquestación con Dagster) está en curso; el runtime local usa `launchd` y
+`caffeinate` (D23). El detalle está en `MEMORY.md` y `plan/README.md`.
 
 Con bronze cargado, construye la tabla de actividades de running en silver:
 
@@ -99,10 +99,14 @@ dato**, no como fallo.
 La app lee exclusivamente Gold y no duplica lógica de negocio:
 
 ```bash
+make setup
 make dbt-build
-make app                 # Streamlit en http://localhost:8501
+make app                 # React + TypeScript en http://localhost:8000
 make alerts              # reglas → lake/alerts.log
 ```
+
+Para desarrollo frontend con recarga rápida: `make app-dev` abre Vite en
+`http://localhost:5173` y levanta la API local en `127.0.0.1:8000`.
 
 Para probar sin datos personales:
 
@@ -111,10 +115,18 @@ make demo                # lake_demo/warehouse.duckdb sintético
 DEMO_MODE=1 make app
 ```
 
-Páginas: Resumen, Progreso, Carga, Plan vs real y Salud del pipeline. Las reglas
-iniciales cubren ACWR > 1,5, más de 10 días sin correr, cumplimiento < 50 %,
+La interfaz tiene pestañas separadas para Actividades, Progreso, Carga y Salud del
+pipeline. Actividades muestra recorrido GPS renderizado localmente, laps FIT y
+comparación de ritmo con planes vinculados explícitamente. Las reglas iniciales
+cubren ACWR > 1,5, más de 10 días sin correr, cumplimiento < 50 %,
 warehouse con más de 36 h y caducidad de la API key. Detalles en
 [`docs/DASHBOARD.md`](docs/DASHBOARD.md).
 
-Hasta la etapa 6 no hay schedule: la actualización de datos y las alertas se
-lanzan manualmente. No se envían datos a servicios externos.
+El mapa usa teselas públicas de OpenStreetMap. Al cargar una ruta, el proveedor
+puede inferir la zona visible por las solicitudes de teselas; los datos Gold y FIT
+no se envían al proveedor.
+
+Dagster incluye schedule diario a las 20:00 America/Mexico_City y sensor de actividades;
+el daemon debe estar activo (`make dev`) para evaluarlos. La instalación del
+LaunchAgent es opcional y local (`make launchd-install`). Fuera de las teselas OSM,
+la app no usa servicios externos.

@@ -6,7 +6,7 @@
 ┌────────────────────┐
 │ Garmin Personal API│──┐
 └────────────────────┘  │   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌───────────────┐
-┌────────────────────┐  ├──►│  INGESTA │──►│  BRONZE  │──►│  SILVER  │──►│     GOLD      │──► Streamlit
+┌────────────────────┐  ├──►│  INGESTA │──►│  BRONZE  │──►│  SILVER  │──►│     GOLD      │──► React UI
 │ FIT por actividad  │──┤   │ (Python) │   │ crudo,   │   │ tipado,  │   │ marts dbt     │──► Alertas
 └────────────────────┘  │   └──────────┘   │ inmutable│   │ validado │   │ DuckDB        │
 ┌────────────────────┐  │                  └──────────┘   └──────────┘   └───────────────┘
@@ -61,7 +61,7 @@ durante la escritura, el cursor (`lake/_state/cursor.json`) apunta al último d�
   cumplimiento del plan.
 
 ### Consumo
-- Streamlit lee de DuckDB en modo solo lectura.
+- La API Python local lee DuckDB en modo solo lectura; la interfaz React consulta esa API.
 - Alertas por reglas sobre gold (consola/archivo primero; notificación después).
 
 ## Orquestación (etapa 6)

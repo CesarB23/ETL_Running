@@ -31,3 +31,8 @@ dagster_home/
 exports/
 
 .DS_Store
+
+# Frontend local
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo

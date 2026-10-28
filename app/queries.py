@@ -120,6 +120,62 @@ def recent_runs(limit: int = 12, path: Path | str | None = None) -> pd.DataFrame
     )
 
 
+def activities(limit: int = 100, path: Path | str | None = None) -> pd.DataFrame:
+    """Actividades running de Gold, con vínculo explícito al plan si existe."""
+    return _frame(
+        """
+        select r.activity_id, r.activity_date, r.distance_m, r.duration_s,
+               r.pace_min_km, r.avg_hr, r.has_gps,
+               p.planned_workout_id, p.title as planned_title,
+               p.scheduled_date, p.confidence as plan_confidence
+        from gold.fct_runs r
+        left join gold.fct_plan_sessions p using (activity_id)
+        where not r.is_manual
+        order by r.activity_date desc, r.start_utc desc
+        limit ?
+        """,
+        [limit],
+        path,
+    )
+
+
+def activity_laps(activity_id: int, path: Path | str | None = None) -> pd.DataFrame:
+    return _frame(
+        """
+        select lap_index, distance_m, duration_s, elapsed_s, avg_hr, intensity, lap_trigger,
+               wkt_step_index, pace_min_km
+        from gold.fct_run_laps where activity_id = ? order by lap_index
+        """,
+        [activity_id],
+        path,
+    )
+
+
+def activity_track(activity_id: int, path: Path | str | None = None) -> pd.DataFrame:
+    return _frame(
+        """
+        select ts_utc, distance_m, lat, lon, speed_mps, altitude_m, heart_rate, timer_running
+        from gold.fct_run_track where activity_id = ? order by ts_utc
+        """,
+        [activity_id],
+        path,
+    )
+
+
+def activity_plan(activity_id: int, path: Path | str | None = None) -> pd.DataFrame:
+    return _frame(
+        """
+        select step_seq, kind, repetition, target_distance_m, target_duration_s,
+               pace_fast_s_km, pace_slow_s_km, actual_pace_s_km,
+               matched_lap_index, confidence
+        from gold.fct_plan_vs_actual
+        where activity_id = ? order by step_seq
+        """,
+        [activity_id],
+        path,
+    )
+
+
 def progress(days: int = 120, path: Path | str | None = None) -> pd.DataFrame:
     return _frame(
         """

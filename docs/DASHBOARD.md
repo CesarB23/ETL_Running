@@ -1,22 +1,28 @@
 # Dashboard y alertas
 
-Aplicación local de **solo lectura** sobre `lake/warehouse.duckdb`. La UI no
-recalcula entrenamientos: muestra los marts de Gold ya construidos por dbt. Si un
-KPI no está en Gold, no se inventa en la app.
+Aplicación local de **solo lectura** sobre `lake/warehouse.duckdb`. La interfaz
+React/TypeScript obtiene exclusivamente datos Gold mediante la API local Python;
+no recalcula entrenamientos. El recorrido se dibuja en el navegador sobre teselas
+públicas de OpenStreetMap. El proveedor puede inferir la zona visible a partir de
+las solicitudes de mapa; no recibe el archivo FIT ni los datos Gold.
 
 ## Arranque
 
 ```bash
+make setup              # uv + dependencias npm
 make dbt-build          # genera/actualiza Gold
-make app                # abre Streamlit en http://localhost:8501
+make app                # interfaz en http://localhost:8000
 make alerts             # evalúa reglas y escribe lake/alerts.log
 ```
+
+Para desarrollo con HMR de Vite: `make app-dev` (http://localhost:5173). La API
+queda en `127.0.0.1:8000`; en modo producción, Python sirve el bundle compilado.
 
 Para el modo demo, sin datos personales:
 
 ```bash
 make demo                       # crea lake_demo/warehouse.duckdb sintético
-DEMO_MODE=1 make app            # Streamlit con banner de datos sintéticos
+DEMO_MODE=1 make app            # React con datos deportivos sintéticos
 ```
 
 `lake_demo/` y `lake/alerts.log` están ignorados por git. El modo demo es el único
@@ -26,11 +32,15 @@ origen admitido para capturas públicas.
 
 | Página | Contenido | Fuente Gold |
 | --- | --- | --- |
-| **Resumen** | Km y carreras de los últimos 7 días, tiempo, ACWR, cumplimiento y volumen semanal | `fct_runs`, `fct_training_load`, `fct_weekly_summary` |
-| **Progreso** | Ritmo, eficiencia aeróbica y drift cardíaco en el tiempo | `fct_runs` |
-| **Carga** | Carga aguda/crónica y ACWR con zonas | `fct_training_load` |
-| **Plan vs real** | Cumplimiento semanal, sesiones y detalle por bloque | `fct_weekly_summary`, `fct_plan_sessions`, `fct_plan_vs_actual` |
-| **Salud del pipeline** | Frescura, volumen, claves únicas, rechazos y últimas alertas | `mart_data_quality`, `lake/alerts.log` |
+| **Actividades** | Recorrido GPS local, laps FIT, ritmos y comparación con el plan vinculado | `fct_runs`, `fct_run_track`, `fct_run_laps`, `fct_plan_sessions`, `fct_plan_vs_actual` |
+| **Progreso** | Ritmo, eficiencia aeróbica y deriva cardíaca a lo largo del tiempo | `fct_runs` |
+| **Carga** | Carga aguda/crónica, ACWR y fiabilidad del historial | `fct_training_load` |
+| **Salud** | Frescura, volúmenes, claves, rechazos y alertas locales | `mart_data_quality`, `lake/alerts.log` |
+
+La interfaz no usa analítica externa. El mapa sí solicita teselas públicas de
+OpenStreetMap y muestra su atribución; cada solicitud revela la zona consultada.
+La comparación del plan requiere el vínculo explícito entre sesión y actividad;
+nunca se infiere solo por fecha.
 
 ### KPIs y lectura
 
@@ -74,9 +84,10 @@ caducidad de la API key hay que informar la fecha:
 GARMIN_API_KEY_EXPIRES=2026-12-01
 ```
 
-Si no hay avisos, el log deja una línea `INFO | no_alerts`. Hasta la etapa 6 no hay
-schedule: las alertas solo se ejecutan cuando lanzas `make alerts` (o un cron
-externo). La notificación es local; no se envían datos a Telegram ni e-mail.
+Si no hay avisos, el log deja una línea `INFO | no_alerts`. El schedule Dagster
+diario también evalúa las alertas al final del pipeline; `make alerts` permite
+ejecutarlas manualmente. La notificación es local; no se envían datos a Telegram
+ni e-mail.
 
 ## Tests
 
@@ -89,19 +100,22 @@ uv run pytest tests/unit/test_alerts.py tests/unit/test_dashboard.py -q
 - Runner: warehouse temporal, escritura del log y ausencia de warehouse.
 - Consultas: warehouse demo sintético; se comprueba que todos los marts
   necesarios existen y devuelven datos.
-- Las páginas se validaron con `streamlit.testing.v1.AppTest` en modo demo.
+- La UI React se compila con `npm --prefix web run build`; las consultas y API
+  Python se prueban con warehouse sintético.
 
 ## Privacidad
 
-- La app no lee Silver ni Bronze, y no muestra coordenadas ni datos de salud.
+- La API lee Gold y solo escucha en localhost.
+- Las teselas OSM son externas; el proveedor puede inferir la zona que se visualiza.
+- El resto del warehouse y los FIT no se envían a OpenStreetMap.
 - El modo demo solo usa datos ficticios generados por
   `scripts/make_demo_warehouse.py` (semilla determinista).
 - No se versionan `lake/`, `lake_demo/`, `*.duckdb`, FIT ni logs.
 
 ## Limitaciones actuales
 
-- Sin orquestación, los datos no se actualizan solos; el dashboard refleja el
-  último `make dbt-build`.
+- Dagster actualiza Gold según schedule cuando `make dev`/daemon está activo; sin
+  orquestador, el dashboard refleja el último `make dbt-build` manual.
 - La frescura puede marcar `data_stale` si no se reconstruye Gold en 36 h. Es
   información real, no un fallo de la app.
 - No hay autenticación: está pensado para `localhost`.

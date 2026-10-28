@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from app import queries
+from app.api import _clean
 
 from etl_running.demo.warehouse import build_demo_warehouse
 
@@ -59,6 +60,24 @@ def test_data_quality_and_recent_runs(demo_warehouse: Path):
     recent = queries.recent_runs(5, demo_warehouse)
     assert len(recent) <= 5
     assert recent["km"].gt(0).all()
+
+
+def test_activity_detail_queries(demo_warehouse: Path):
+    activities = queries.activities(path=demo_warehouse)
+    assert not activities.empty
+    activity_id = int(activities.iloc[0]["activity_id"])
+    laps = queries.activity_laps(activity_id, demo_warehouse)
+    track = queries.activity_track(activity_id, demo_warehouse)
+    assert len(laps) == 4
+    assert len(track) >= 2
+    assert {"lat", "lon"} <= set(track.columns)
+
+
+def test_api_json_normalizes_missing_values():
+    import pandas as pd
+
+    assert _clean(pd.NaT) is None
+    assert _clean(float("nan")) is None
 
 
 def test_warehouse_path_demo_mode(monkeypatch, tmp_path: Path):
